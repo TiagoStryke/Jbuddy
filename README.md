@@ -23,7 +23,7 @@ JBuddy was designed for remote workers who need to maintain their "Available" st
 
 ## Installation
 
-1. Download the latest release from the [Releases](https://github.com/YOUR_USERNAME/jbuddy/releases) page
+1. Download the latest release from the [Releases](https://github.com/TiagoStryke/jbuddy/releases) page
 2. Move the JBuddy.app file to your Applications folder
 3. Launch JBuddy - it will appear in your menu bar
 
