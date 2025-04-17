@@ -1,0 +1,99 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Installer logs
+debug.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+build_env/
+venv/
+ENV/
+env/
+.venv/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon files
+*.icns
+*.ico
+
+# Py2app/py2exe
+*.app/
+*.dmg
+*.pkg
+*.mpkg
+*.iso
+*.tar.gz
+*.zip
+
+# VS Code
+.vscode/
+
+# Misc
+*.log
+*.pot
+*.mo
+
+# Test output
+test-output/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Local env files
+.env
+.env.*
+
+# System files
+Thumbs.db
+Desktop.ini
+
+# Backup files
+*~
+*.bak
+*.swp
+*.swo
+*.tmp
+
+# Ignore icons build folders
+icons/*/IconBuild.iconset/
