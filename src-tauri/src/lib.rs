@@ -71,6 +71,18 @@ pub fn run() {
                 })
                 .build(&handle)?;
 
+            // Fechar a janela (X) só ESCONDE — o app continua vivo na bandeja.
+            // Sair de verdade é só pelo menu "Sair do Jbuddy".
+            if let Some(win) = handle.get_webview_window("main") {
+                let win_for_event = win.clone();
+                win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = win_for_event.hide();
+                    }
+                });
+            }
+
             // Thread de monitoramento (vive enquanto o app viver). Leva o `tray`
             // junto pra mantê-lo vivo e atualizar o título por ele.
             let snap = snapshot.clone();
