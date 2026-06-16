@@ -54,7 +54,10 @@ impl Store {
             ActivityState::Idle => (0, secs, 0),
             ActivityState::Away => (0, 0, secs),
         };
-        self.conn.execute(
+        // Os dois UPSERTs numa transação: ou ambos aplicam, ou nenhum —
+        // mantém `daily` e `hourly` sempre consistentes.
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute(
             "INSERT INTO daily (date, working_secs, idle_secs, away_secs)
              VALUES (?1, ?2, ?3, ?4)
              ON CONFLICT(date) DO UPDATE SET
@@ -63,7 +66,7 @@ impl Store {
                 away_secs    = away_secs + ?4",
             params![date, w, i, a],
         )?;
-        self.conn.execute(
+        tx.execute(
             "INSERT INTO hourly (date, hour, working_secs, idle_secs, away_secs)
              VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT(date, hour) DO UPDATE SET
@@ -72,7 +75,7 @@ impl Store {
                 away_secs    = away_secs + ?5",
             params![date, hour, w, i, a],
         )?;
-        Ok(())
+        tx.commit()
     }
 
     /// Totais do dia. Retorna `(0, 0, 0)` se ainda não há linha.

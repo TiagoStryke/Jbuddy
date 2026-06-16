@@ -87,11 +87,13 @@ pub fn run_loop(
     today_item: MenuItem<Wry>,
     status_item: MenuItem<Wry>,
 ) {
+    // Se o store falhar, NÃO retornamos: isso descartaria o `tray`/menus movidos
+    // pra cá e o ícone sumiria do menu bar. Seguimos sem persistência (UI viva).
     let store = match Store::open() {
-        Ok(s) => s,
+        Ok(s) => Some(s),
         Err(e) => {
-            eprintln!("[jbuddy] falha ao abrir o store: {e}");
-            return;
+            eprintln!("[jbuddy] store indisponível, seguindo sem persistência: {e}");
+            None
         }
     };
     let th = Thresholds::default();
@@ -105,10 +107,14 @@ pub fn run_loop(
         let date = now.format("%Y-%m-%d").to_string();
         let hour = now.hour() as i64;
 
-        if let Err(e) = store.credit(&date, hour, state, POLL_SECS as i64) {
-            eprintln!("[jbuddy] falha ao gravar: {e}");
-        }
-        let (working, idle_t, away) = store.today_totals(&date).unwrap_or((0, 0, 0));
+        let (working, idle_t, away) = if let Some(store) = &store {
+            if let Err(e) = store.credit(&date, hour, state, POLL_SECS as i64) {
+                eprintln!("[jbuddy] falha ao gravar: {e}");
+            }
+            store.today_totals(&date).unwrap_or((0, 0, 0))
+        } else {
+            (0, 0, 0)
+        };
 
         if let Ok(mut s) = snap.lock() {
             s.state = state.label_pt().to_string();
