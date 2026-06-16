@@ -1,101 +1,64 @@
-# JBuddy
+<div align="center">
 
-JBuddy is a macOS menu bar application that helps keep Microsoft Teams active during working hours by simulating user activity, preventing your status from going idle.
+# 🧑‍💻 Jbuddy
 
-![JBuddy Icons](icons/active_icon/jbuddy_active.png)
+**Your job buddy — a friendly menu-bar companion that helps you work healthier, not longer.**
+
+Jbuddy lives in your macOS menu bar, measures how much you *actually* worked, and gently
+reminds you to drink water, stretch, and rest your eyes — with a little mascot whose mood
+reflects your habits. 100% local. Zero telemetry.
+
+</div>
+
+---
+
+> ⚠️ **Status: under active rewrite.** Jbuddy used to be a "stay-awake" tool that jiggled the
+> mouse to keep chat apps "Available". That's gone. It's being rebuilt from scratch into a
+> genuine well-being companion. See [Roadmap](#roadmap).
+
+## Why
+
+Most "productivity" tools push you to do *more*. Jbuddy does the opposite: it helps you keep a
+**sustainable** rhythm. It tracks your **real** focus time (from actual keyboard/mouse activity —
+never by faking it), nudges you to take care of yourself, and warns you when you're overdoing it.
 
 ## Features
 
-- **Activity Simulation**: Keeps Teams active by simulating minimal keyboard activity
-- **Working Hours**: Set your own working hours for when JBuddy should keep you active
-- **Menu Bar Access**: Quick access to enable/disable through the menu bar
-- **Automatic Scheduling**: Activates only during specified working hours
-- **Activity Statistics**: Tracks usage and provides insights
-- **Break Reminders**: Option to enable periodic reminders to take breaks
+- ⏱️ **Real work tracking** — measures effective focus time from genuine activity, splitting your
+  day into *working · idle · away*. When you step away, the clock stops. The numbers are honest.
+- 💧 **Healthy reminders** — water, stand-up & stretch, and the 20-20-20 eye rule. Every interval
+  is configurable, and reminders won't interrupt you mid-meeting.
+- 🛑 **Anti-overwork guard** — nudges you when you've passed your target hours or gone too long
+  without a break.
+- 📊 **Honest reports** — end-of-day and weekly view of effective hours, plus a heatmap of your
+  most productive and most idle hours.
+- 🐣 **A buddy that cares** — a mascot in the tray whose mood mirrors your habits. Stay hydrated
+  and take breaks → it thrives. Grind nonstop → it gets tired. Light gamification, no pressure.
+- 🔒 **Private by design** — everything stays on your machine. No accounts, no cloud, no tracking.
 
-## Why JBuddy?
+## Tech
 
-JBuddy was designed for remote workers who need to maintain their "Available" status in Microsoft Teams, even during short periods of inactivity. It helps prevent the following issues:
+Built with **[Tauri](https://tauri.app/)** (Rust core + web frontend) — a tiny, fast, native
+menu-bar app. macOS first; Windows support planned.
 
-- Teams status automatically changing to "Away" after a few minutes
-- Computer going to sleep during the workday
-- Missing important messages due to status changes
+```bash
+pnpm install
+pnpm tauri dev      # run in development
+pnpm tauri build    # build the .app
+```
 
-## Installation
+Requirements: Node, pnpm, and the Rust toolchain.
 
-1. Download the latest release from the [Releases](https://github.com/TiagoStryke/jbuddy/releases) page
-2. Move the JBuddy.app file to your Applications folder
-3. Launch JBuddy - it will appear in your menu bar
+## Roadmap
 
-### First Launch
-
-1. When first launching, right-click (or Control-click) on JBuddy.app and select "Open"
-2. Click "Open" in the security dialog
-3. JBuddy will appear in your menu bar (top-right of the screen)
-
-### Auto-Start with macOS
-
-To make JBuddy start automatically when you log in:
-1. Go to System Settings → General → Login Items
-2. Click the "+" button
-3. Find and select "JBuddy.app" from Applications
-4. Click "Add"
-
-## Usage
-
-- Click the JBuddy icon in the menu bar to access the menu
-- Toggle "Enable JBuddy" to turn the service on or off
-- Set your working hours in the preferences
-- View activity statistics to see how JBuddy has been working for you
-- Configure break reminders to help maintain a healthy work routine
-
-### Work Hours
-
-By default, JBuddy operates Monday through Friday, 9 AM to 6 PM. Outside these hours, it enters "After Hours" mode and won't simulate activity, but it remains running to automatically activate the next workday.
-
-## Building from Source
-
-If you want to build JBuddy from source:
-
-1. Clone this repository
-2. Create a virtual environment: `python -m venv build_env`
-3. Activate the environment: `source build_env/bin/activate`
-4. Install requirements: `pip install -r requirements.txt` (or manually install dependencies: rumps, pyobjc)
-5. Build the app: `python setup.py py2app`
-
-The built application will be available in the `dist` folder.
-
-## Requirements
-
-- macOS 10.13 or later
-- Microsoft Teams application installed
-
-## Version History
-
-### v1.2.0 (April 2025)
-- Added activity statistics tracking
-- Added break reminders after 1 hour of continuous activity
-- Improved persistence across days (now stays running after work hours)
-- Fixed issues with Mac sleep prevention
-
-### v1.1.0 (March 2025)
-- Added menu bar icons for active and idle states
-- Improved mouse movement algorithm
-- Added manual toggle for active/idle states
-- Fixed bug with work hours detection
-
-### v1.0.0 (February 2025)
-- Initial release
-- Basic activity simulation
-- Work hours configuration
-- Menu bar integration
+- [x] Project rewrite & Tauri scaffold
+- [ ] Real idle/activity tracking (working · idle · away)
+- [ ] Configurable reminders (water · stretch · 20-20-20)
+- [ ] Dashboard: today, week, and hourly heatmap
+- [ ] Anti-overwork guard & end-of-day nudge
+- [ ] Mascot moods & light gamification
+- [ ] Launch at login + polished release
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built with [rumps](https://github.com/jaredks/rumps) for the macOS menu bar interface
-- Uses [py2app](https://github.com/ronaldoussoren/py2app) for macOS application packaging
-- Icons created with macOS IconBuild
+See [LICENSE](LICENSE).
