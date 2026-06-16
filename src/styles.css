@@ -1,116 +1,199 @@
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
+@import "./theme.css";
+
+body {
+  /* leve tinta + brilho do acento por cima do material nativo */
+  background:
+    radial-gradient(100% 70% at 50% -15%, rgba(48, 217, 119, 0.1), transparent 60%),
+    radial-gradient(90% 60% at 100% 115%, rgba(52, 200, 192, 0.07), transparent 55%);
 }
 
-.logo.typescript:hover {
-  filter: drop-shadow(0 0 2em #2d79c7);
-}
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
+.app {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  padding: 30px 26px 24px;
+  gap: 14px;
+}
+
+/* barra superior (arrastável) */
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 64px; /* espaço pros traffic lights */
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #05140c;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  box-shadow: 0 4px 14px -4px var(--accent);
 }
 
-button {
-  cursor: pointer;
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5ch;
+  padding: 0.34rem 0.78rem 0.34rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: lowercase;
 }
 
-#greet-input {
-  margin-right: 5px;
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.state-pill[data-state="working"] .dot {
+  background: var(--working);
+  box-shadow: 0 0 9px 1px var(--working);
+  animation: breathe 3.2s var(--ease) infinite;
+}
+.state-pill[data-state="idle"] .dot {
+  background: var(--idle);
+}
+.state-pill[data-state="away"] .dot {
+  background: var(--away);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
+/* herói: anel de progresso estilo Activity */
+.hero {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+.ring {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+.ring svg {
+  width: 100%;
+  height: 100%;
+}
+#grad stop:first-of-type {
+  stop-color: var(--accent);
+}
+#grad stop:last-of-type {
+  stop-color: var(--accent-2);
+}
+.ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 14;
+}
+.ring-fill {
+  fill: none;
+  stroke: url(#grad);
+  stroke-width: 14;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(48, 217, 119, 0.45));
+  transition: stroke-dashoffset 0.9s var(--ease);
+}
+
+.ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+}
+.ring-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 3.1rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.ring-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* trio de estatísticas */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 13px 10px 12px;
+}
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 600;
+}
+.stat-label {
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+  color: var(--muted);
+}
+
+/* entrada escalonada */
+@media (prefers-reduced-motion: no-preference) {
+  .bar,
+  .hero,
+  .stats {
+    animation: rise 0.6s var(--ease) both;
   }
-
-  a:hover {
-    color: #24c8db;
+  .hero {
+    animation-delay: 0.06s;
   }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
+  .stats {
+    animation-delay: 0.12s;
   }
-  button:active {
-    background-color: #0f0f0f69;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 9px 1px var(--working);
+  }
+  50% {
+    box-shadow: 0 0 15px 3px var(--working);
   }
 }

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/reminder.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jbuddy</title>
+    <script type="module" src="/src/reminder.ts" defer></script>
+  </head>
+  <body data-kind="water">
+    <main class="card enter">
+      <div class="head">
+        <div class="orb"><span class="emoji" id="emoji">💧</span></div>
+        <h1 class="title" id="title">Lembrete</h1>
+      </div>
+      <p class="message" id="message">…</p>
+      <div class="actions">
+        <button class="primary" id="done" data-i18n="action.done">Done</button>
+        <button class="ghost" id="snooze" data-i18n="action.snooze">Snooze</button>
+        <button class="ghost" id="skip" data-i18n="action.skip">Skip</button>
+      </div>
+    </main>
+  </body>
+</html>

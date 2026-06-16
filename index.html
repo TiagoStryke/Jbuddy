@@ -7,27 +7,59 @@
     <title>Jbuddy</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
-
   <body>
-    <main class="container">
-      <h1>🧑‍💻 Jbuddy</h1>
-      <p class="muted">Painel em construção — Fase 1: tracking real.</p>
+    <main class="app">
+      <header class="bar" data-tauri-drag-region>
+        <div class="brand">
+          <span class="logo">J</span>
+          <span class="wordmark">Jbuddy</span>
+        </div>
+        <span class="state-pill glass" id="state-pill" data-state="">
+          <i class="dot"></i>
+          <span id="state">—</span>
+        </span>
+      </header>
 
-      <section class="stats">
-        <div class="stat">
-          <span class="stat-value" id="working">—</span>
-          <span class="stat-label">efetivas hoje</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="idle">—</span>
-          <span class="stat-label">ocioso</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="away">—</span>
-          <span class="stat-label">ausente</span>
+      <section class="hero">
+        <div class="ring">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="var(--accent)" />
+                <stop offset="100%" stop-color="var(--accent-2)" />
+              </linearGradient>
+            </defs>
+            <circle class="ring-track" cx="100" cy="100" r="86" />
+            <circle
+              class="ring-fill"
+              id="ring"
+              cx="100"
+              cy="100"
+              r="86"
+              transform="rotate(-90 100 100)"
+            />
+          </svg>
+          <div class="ring-center">
+            <span class="ring-value tnum" id="working">0h00</span>
+            <span class="ring-label" data-i18n="focus.today">focus today</span>
+          </div>
         </div>
       </section>
-      <p class="muted">Estado atual: <strong id="state">—</strong></p>
+
+      <section class="stats">
+        <article class="card glass">
+          <span class="stat-num tnum" id="idle">0h00</span>
+          <span class="stat-label" data-i18n="stat.idle">idle</span>
+        </article>
+        <article class="card glass">
+          <span class="stat-num tnum" id="away">0h00</span>
+          <span class="stat-label" data-i18n="stat.away">away</span>
+        </article>
+        <article class="card glass">
+          <span class="stat-num tnum" id="focus">—</span>
+          <span class="stat-label" data-i18n="stat.focus">focus</span>
+        </article>
+      </section>
     </main>
   </body>
 </html>
