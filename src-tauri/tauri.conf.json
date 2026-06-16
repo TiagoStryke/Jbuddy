@@ -11,12 +11,41 @@
   },
   "app": {
     "withGlobalTauri": true,
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "Jbuddy",
-        "width": 900,
-        "height": 640,
-        "visible": false
+        "width": 760,
+        "height": 540,
+        "visible": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["hudWindow"],
+          "state": "active",
+          "radius": 18
+        }
+      },
+      {
+        "label": "reminder",
+        "url": "reminder.html",
+        "title": "Jbuddy",
+        "width": 312,
+        "height": 158,
+        "visible": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["hudWindow"],
+          "state": "active",
+          "radius": 18
+        }
       }
     ],
     "security": {

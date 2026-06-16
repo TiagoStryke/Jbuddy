@@ -3,16 +3,23 @@
 //! Fase 1: tracking real de atividade. Sobe um ícone na bandeja com o tempo
 //! efetivo de hoje (timer vivo) e uma thread que mede atividade real e persiste.
 
+mod config;
 mod idle;
+mod locale;
+mod reminders;
 mod store;
 mod tracker;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
+use config::Config;
+use reminders::{ReminderKind, Schedule, SharedSchedule};
 use tracker::{SharedSnapshot, Snapshot};
 
 /// Retorna o snapshot do dia (estado atual + segundos por categoria).
@@ -21,14 +28,72 @@ fn get_today_stats(snap: State<'_, SharedSnapshot>) -> Snapshot {
     snap.lock().map(|s| s.clone()).unwrap_or_default()
 }
 
+/// Config atual (pra tela de configurações ler).
+#[tauri::command]
+fn get_config(config: State<'_, Arc<Config>>) -> Config {
+    (**config).clone()
+}
+
+/// Ação do usuário num lembrete: "done" / "skip" (reagenda) ou "snooze" (adia curto).
+/// Sempre esconde a janela de lembrete e libera o disparo do próximo.
+#[tauri::command]
+fn reminder_action(
+    app: AppHandle,
+    schedule: State<'_, SharedSchedule>,
+    active: State<'_, Arc<AtomicBool>>,
+    kind: String,
+    action: String,
+) {
+    if let Some(k) = ReminderKind::from_id(&kind) {
+        let now = Instant::now();
+        if let Ok(mut s) = schedule.lock() {
+            match action.as_str() {
+                "snooze" => s.snooze(k, now),
+                _ => s.reschedule(k, now),
+            }
+        }
+    }
+    if let Some(win) = app.get_webview_window("reminder") {
+        let _ = win.hide();
+    }
+    active.store(false, Ordering::Relaxed);
+}
+
+/// Posiciona a janela de lembrete no canto superior direito do monitor atual
+/// (discreto, perto das notificações do macOS), com margem da barra de menu.
+pub(crate) fn place_reminder(win: &tauri::WebviewWindow) {
+    if let (Ok(Some(monitor)), Ok(size)) = (win.current_monitor(), win.outer_size()) {
+        let m_pos = monitor.position();
+        let m_size = monitor.size();
+        let scale = monitor.scale_factor();
+        let margin = (16.0 * scale) as i32;
+        let top = (44.0 * scale) as i32;
+        let x = m_pos.x + m_size.width as i32 - size.width as i32 - margin;
+        let y = m_pos.y + top;
+        let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let snapshot: SharedSnapshot = Arc::new(Mutex::new(Snapshot::default()));
+    let config = Arc::new(Config::load());
+    let schedule: SharedSchedule =
+        Arc::new(Mutex::new(Schedule::from_config(&config, Instant::now())));
+    // true enquanto uma janela de lembrete está aberta (evita empilhar).
+    let reminder_active = Arc::new(AtomicBool::new(false));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(snapshot.clone())
-        .invoke_handler(tauri::generate_handler![get_today_stats])
+        .manage(config.clone())
+        .manage(schedule.clone())
+        .manage(reminder_active.clone())
+        .invoke_handler(tauri::generate_handler![
+            get_today_stats,
+            get_config,
+            reminder_action
+        ])
         .setup(move |app| {
             // App de bandeja puro: sem ícone na Dock (macOS).
             #[cfg(target_os = "macos")]
@@ -37,17 +102,36 @@ pub fn run() {
             let handle = app.handle().clone();
 
             // Menu do tray (itens de status são atualizados pelo tracker).
-            let today_item =
-                MenuItem::with_id(&handle, "today", "Hoje: calculando…", false, None::<&str>)?;
-            let status_item =
-                MenuItem::with_id(&handle, "status", "Estado: —", false, None::<&str>)?;
-            let open_item =
-                MenuItem::with_id(&handle, "open", "Abrir painel", true, None::<&str>)?;
-            let quit_item = PredefinedMenuItem::quit(&handle, Some("Sair do Jbuddy"))?;
+            let t = locale::tray();
+            let today_item = MenuItem::with_id(
+                &handle,
+                "today",
+                format!("{}: …", t.today),
+                false,
+                None::<&str>,
+            )?;
+            let status_item = MenuItem::with_id(
+                &handle,
+                "status",
+                format!("{}: —", t.status),
+                false,
+                None::<&str>,
+            )?;
+            let open_item = MenuItem::with_id(&handle, "open", t.open, true, None::<&str>)?;
+            let test_item =
+                MenuItem::with_id(&handle, "test_reminder", t.test, true, None::<&str>)?;
+            let quit_item = PredefinedMenuItem::quit(&handle, Some(t.quit))?;
             let sep = PredefinedMenuItem::separator(&handle)?;
             let menu = Menu::with_items(
                 &handle,
-                &[&today_item, &status_item, &sep, &open_item, &quit_item],
+                &[
+                    &today_item,
+                    &status_item,
+                    &sep,
+                    &open_item,
+                    &test_item,
+                    &quit_item,
+                ],
             )?;
 
             // Ícone embutido em tempo de compilação — garante que o tray sempre
@@ -61,13 +145,25 @@ pub fn run() {
                 .show_menu_on_left_click(true)
                 .tooltip("Jbuddy")
                 .title("Jbuddy")
-                .on_menu_event(|app, event| {
-                    if event.id.as_ref() == "open" {
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => {
                         if let Some(win) = app.get_webview_window("main") {
                             let _ = win.show();
                             let _ = win.set_focus();
                         }
                     }
+                    "test_reminder" => {
+                        let payload = serde_json::json!({ "kind": "water", "rotation": 0 });
+                        let _ = app.emit_to("reminder", "show-reminder", payload);
+                        if let Some(win) = app.get_webview_window("reminder") {
+                            place_reminder(&win);
+                            let _ = win.show();
+                        }
+                        if let Some(active) = app.try_state::<Arc<AtomicBool>>() {
+                            active.store(true, Ordering::Relaxed);
+                        }
+                    }
+                    _ => {}
                 })
                 .build(&handle)?;
 
