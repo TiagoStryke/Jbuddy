@@ -15,7 +15,8 @@
       {
         "title": "Jbuddy",
         "width": 900,
-        "height": 640
+        "height": 640,
+        "visible": false
       }
     ],
     "security": {
