@@ -52,7 +52,7 @@ Requirements: Node, pnpm, and the Rust toolchain.
 ## Roadmap
 
 - [x] Project rewrite & Tauri scaffold
-- [ ] Real idle/activity tracking (working · idle · away)
+- [x] Real idle/activity tracking (working · idle · away)
 - [ ] Configurable reminders (water · stretch · 20-20-20)
 - [ ] Dashboard: today, week, and hourly heatmap
 - [ ] Anti-overwork guard & end-of-day nudge

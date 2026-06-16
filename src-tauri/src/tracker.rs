@@ -10,6 +10,7 @@ use std::time::Duration;
 use chrono::{Local, Timelike};
 use serde::Serialize;
 use tauri::menu::MenuItem;
+use tauri::tray::TrayIcon;
 use tauri::{AppHandle, Wry};
 
 use crate::idle;
@@ -82,6 +83,7 @@ pub type SharedSnapshot = Arc<Mutex<Snapshot>>;
 pub fn run_loop(
     app: AppHandle,
     snap: SharedSnapshot,
+    tray: TrayIcon<Wry>,
     today_item: MenuItem<Wry>,
     status_item: MenuItem<Wry>,
 ) {
@@ -116,16 +118,15 @@ pub fn run_loop(
         }
 
         // Atualiza a UI (tray) sempre na main thread.
-        let tray_title = fmt_short(working);
+        // Prefixo "Jbuddy" no título deixa o item ACHÁVEL no menu bar (texto > ícone genérico).
+        let tray_title = format!("Jbuddy {}", fmt_short(working));
         let today_text = format!("Hoje: {} efetivas", fmt_short(working));
         let status_text = format!("Estado: {}", state.label_pt());
-        let app2 = app.clone();
+        let tray2 = tray.clone();
         let ti = today_item.clone();
         let si = status_item.clone();
         let _ = app.run_on_main_thread(move || {
-            if let Some(tray) = app2.tray_by_id("main") {
-                let _ = tray.set_title(Some(tray_title));
-            }
+            let _ = tray2.set_title(Some(tray_title));
             let _ = ti.set_text(today_text);
             let _ = si.set_text(status_text);
         });

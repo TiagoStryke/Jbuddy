@@ -50,9 +50,16 @@ pub fn run() {
                 &[&today_item, &status_item, &sep, &open_item, &quit_item],
             )?;
 
-            let mut tray = TrayIconBuilder::with_id("main")
+            // Ícone embutido em tempo de compilação — garante que o tray sempre
+            // tem imagem (não depende de default_window_icon vir Some).
+            let tray_icon = tauri::include_image!("icons/32x32.png");
+            // IMPORTANTE: guardar o handle. Se o `TrayIcon` for descartado, o macOS
+            // remove o item do menu bar. Ele vai morar na thread de monitoramento.
+            let tray = TrayIconBuilder::with_id("main")
+                .icon(tray_icon)
                 .menu(&menu)
                 .show_menu_on_left_click(true)
+                .tooltip("Jbuddy")
                 .title("Jbuddy")
                 .on_menu_event(|app, event| {
                     if event.id.as_ref() == "open" {
@@ -61,16 +68,14 @@ pub fn run() {
                             let _ = win.set_focus();
                         }
                     }
-                });
-            if let Some(icon) = app.default_window_icon().cloned() {
-                tray = tray.icon(icon);
-            }
-            tray.build(&handle)?;
+                })
+                .build(&handle)?;
 
-            // Thread de monitoramento (vive enquanto o app viver).
+            // Thread de monitoramento (vive enquanto o app viver). Leva o `tray`
+            // junto pra mantê-lo vivo e atualizar o título por ele.
             let snap = snapshot.clone();
             std::thread::spawn(move || {
-                tracker::run_loop(handle, snap, today_item, status_item);
+                tracker::run_loop(handle, snap, tray, today_item, status_item);
             });
 
             Ok(())
