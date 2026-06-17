@@ -120,14 +120,15 @@ impl Schedule {
         now: Instant,
         state: ActivityState,
         idle_seconds: f64,
+        in_meeting: bool,
     ) -> Option<ReminderPayload> {
         for r in self.reminders.iter_mut() {
             if !r.enabled || now < r.next_due {
                 continue;
             }
 
-            // Ausente: não avisa tela vazia. Reavalia em breve.
-            if state == ActivityState::Away {
+            // Ausente ou em reunião: não interrompe. Reavalia em breve.
+            if state == ActivityState::Away || in_meeting {
                 r.next_due = now + RECHECK;
                 continue;
             }
@@ -169,7 +170,7 @@ mod tests {
     fn nao_dispara_antes_do_intervalo() {
         let (mut s, now) = schedule_now();
         assert!(s
-            .tick(now + Duration::from_secs(10), ActivityState::Working, 20.0)
+            .tick(now + Duration::from_secs(10), ActivityState::Working, 20.0, false)
             .is_none());
     }
 
@@ -178,14 +179,22 @@ mod tests {
         let (mut s, now) = schedule_now();
         // eyes vence em 20min; aos 21min está devido
         let due = now + Duration::from_secs(21 * 60);
-        assert!(s.tick(due, ActivityState::Working, 20.0).is_some());
+        assert!(s.tick(due, ActivityState::Working, 20.0, false).is_some());
     }
 
     #[test]
     fn nao_dispara_quando_ausente() {
         let (mut s, now) = schedule_now();
         let due = now + Duration::from_secs(21 * 60);
-        assert!(s.tick(due, ActivityState::Away, 5000.0).is_none());
+        assert!(s.tick(due, ActivityState::Away, 5000.0, false).is_none());
+    }
+
+    #[test]
+    fn nao_dispara_em_reuniao() {
+        let (mut s, now) = schedule_now();
+        let due = now + Duration::from_secs(21 * 60);
+        // trabalhando, devido, mas com o mic em uso (reunião) → segura
+        assert!(s.tick(due, ActivityState::Working, 20.0, true).is_none());
     }
 
     #[test]
@@ -193,7 +202,7 @@ mod tests {
         let (mut s, now) = schedule_now();
         let due = now + Duration::from_secs(21 * 60);
         // idle baixíssimo = digitando agora → adia (primeira vez)
-        assert!(s.tick(due, ActivityState::Working, 2.0).is_none());
+        assert!(s.tick(due, ActivityState::Working, 2.0, false).is_none());
     }
 
     #[test]
@@ -201,9 +210,9 @@ mod tests {
         let (mut s, now) = schedule_now();
         let due = now + Duration::from_secs(21 * 60);
         // primeira avaliação em deep focus marca deferred_since
-        assert!(s.tick(due, ActivityState::Working, 2.0).is_none());
+        assert!(s.tick(due, ActivityState::Working, 2.0, false).is_none());
         // muito depois do teto, ainda em deep focus → dispara mesmo assim
         let later = due + MAX_DEFER + Duration::from_secs(1);
-        assert!(s.tick(later, ActivityState::Working, 2.0).is_some());
+        assert!(s.tick(later, ActivityState::Working, 2.0, false).is_some());
     }
 }

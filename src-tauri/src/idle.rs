@@ -17,10 +17,19 @@ const ANY_INPUT_EVENT_TYPE: u32 = 0xFFFF_FFFF;
 #[link(name = "ApplicationServices", kind = "framework")]
 extern "C" {
     fn CGEventSourceSecondsSinceLastEventType(state_id: u32, event_type: u32) -> c_double;
+    fn CGMainDisplayID() -> u32;
+    fn CGDisplayIsAsleep(display: u32) -> i32;
 }
 
 /// Segundos desde o último input de teclado/mouse.
 pub fn seconds_since_last_input() -> f64 {
     // SAFETY: chamada FFI a uma função read-only do CoreGraphics; sem ponteiros.
     unsafe { CGEventSourceSecondsSinceLastEventType(HID_SYSTEM_STATE, ANY_INPUT_EVENT_TYPE) }
+}
+
+/// `true` se a tela principal está dormindo (tampa fechada / display apagado).
+/// Sinal forte de "ausente" que o idle do HID não pega (PowerNaps reativam input).
+pub fn display_asleep() -> bool {
+    // SAFETY: ambas read-only do CoreGraphics.
+    unsafe { CGDisplayIsAsleep(CGMainDisplayID()) != 0 }
 }

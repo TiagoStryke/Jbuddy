@@ -41,6 +41,7 @@ pub struct TrayStrings {
     pub today: &'static str,
     pub status: &'static str,
     pub open: &'static str,
+    pub settings: &'static str,
     pub test: &'static str,
     pub quit: &'static str,
 }
@@ -51,6 +52,7 @@ pub fn tray() -> TrayStrings {
             today: "Hoje",
             status: "Estado",
             open: "Abrir painel",
+            settings: "Configurações",
             test: "Testar lembrete 💧",
             quit: "Sair do Jbuddy",
         },
@@ -58,6 +60,7 @@ pub fn tray() -> TrayStrings {
             today: "Today",
             status: "Status",
             open: "Open panel",
+            settings: "Settings",
             test: "Test reminder 💧",
             quit: "Quit Jbuddy",
         },

@@ -39,7 +39,22 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "resizable": false,
-        "focus": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["hudWindow"],
+          "state": "active",
+          "radius": 18
+        }
+      },
+      {
+        "label": "settings",
+        "url": "settings.html",
+        "title": "Jbuddy",
+        "width": 440,
+        "height": 600,
+        "visible": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
         "transparent": true,
         "windowEffects": {
           "effects": ["hudWindow"],

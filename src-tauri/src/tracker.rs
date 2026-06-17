@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use chrono::{Local, Timelike};
+use chrono::{Datelike, Local, Timelike};
 use serde::Serialize;
 use tauri::menu::MenuItem;
 use tauri::tray::TrayIcon;
@@ -16,13 +16,32 @@ use tauri::{AppHandle, Emitter, Manager, Wry};
 
 use crate::config::Config;
 use crate::idle;
+use crate::keepalive;
 use crate::locale;
+use crate::meeting;
 use crate::reminders::SharedSchedule;
 use crate::store::Store;
 
 /// Intervalo entre leituras. Crédito por tick é fixo (robusto a sleep do sistema:
 /// se a máquina dorme, a thread também dorme e não infla as horas).
 const POLL_SECS: u64 = 5;
+
+/// Intervalo mínimo entre nudges de keep-alive (Teams marca ausente ~5min).
+const KEEP_ALIVE_SECS: u64 = 150;
+
+/// Dia útil e dentro do horário de trabalho configurado.
+fn is_work_hours(start: u32, end: u32) -> bool {
+    let now = Local::now();
+    if now.weekday().num_days_from_monday() >= 5 {
+        return false; // fim de semana
+    }
+    let h = now.hour();
+    if start <= end {
+        h >= start && h < end
+    } else {
+        h >= start || h < end
+    }
+}
 
 /// Estado de atividade derivado do tempo de idle.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -102,18 +121,69 @@ pub fn run_loop(
         }
     };
     // Estado compartilhado (gerenciado pelo Tauri).
-    let config = app.state::<Arc<Config>>().inner().clone();
+    let config = app.state::<Arc<Mutex<Config>>>().inner().clone();
     let schedule = app.state::<SharedSchedule>().inner().clone();
     let reminder_active = app.state::<Arc<AtomicBool>>().inner().clone();
-    let th = Thresholds {
-        idle_secs: config.idle_secs,
-        away_secs: config.away_secs,
-    };
     let poll = Duration::from_secs(POLL_SECS);
+    let keep_alive_gap = Duration::from_secs(KEEP_ALIVE_SECS);
+
+    // Atividade REAL (exclui os nudges do próprio keep-alive).
+    let mut last_real_activity = Instant::now();
+    let mut last_nudge: Option<Instant> = None;
 
     loop {
-        let idle_seconds = idle::seconds_since_last_input();
-        let state = classify(idle_seconds, &th);
+        // Snapshot da config deste tick (a tela de configs altera ao vivo).
+        let (th, keep_awake, work_start, work_end) = match config.lock() {
+            Ok(c) => (
+                Thresholds {
+                    idle_secs: c.idle_secs,
+                    away_secs: c.away_secs,
+                },
+                c.keep_screen_awake,
+                c.work_start_hour,
+                c.work_end_hour,
+            ),
+            Err(_) => (Thresholds::default(), false, 9, 24),
+        };
+
+        let now_inst = Instant::now();
+        let hid_idle = idle::seconds_since_last_input();
+        let last_event = now_inst
+            .checked_sub(Duration::from_secs_f64(hid_idle.max(0.0)))
+            .unwrap_or(now_inst);
+        // Se o último evento foi um nudge NOSSO, não conta como atividade real.
+        let from_own_nudge = last_nudge.is_some_and(|n| {
+            let diff = if last_event >= n {
+                last_event - n
+            } else {
+                n - last_event
+            };
+            diff < Duration::from_secs(3)
+        });
+        if !from_own_nudge {
+            last_real_activity = last_event;
+        }
+        let real_idle = now_inst.duration_since(last_real_activity).as_secs_f64();
+
+        let screen_off = idle::display_asleep();
+        // Tela dormindo ⇒ ausente. Senão, classifica pelo idle REAL.
+        let state = if screen_off {
+            ActivityState::Away
+        } else {
+            classify(real_idle, &th)
+        };
+
+        // Keep-alive opt-in: só em horário de trabalho, tela acesa, e quando você
+        // está fora (idle real alto). No máximo um nudge a cada KEEP_ALIVE_SECS.
+        if keep_awake
+            && !screen_off
+            && real_idle > th.idle_secs
+            && is_work_hours(work_start, work_end)
+            && last_nudge.is_none_or(|n| now_inst.duration_since(n) >= keep_alive_gap)
+        {
+            keepalive::nudge();
+            last_nudge = Some(now_inst);
+        }
 
         let now = Local::now();
         let date = now.format("%Y-%m-%d").to_string();
@@ -152,9 +222,10 @@ pub fn run_loop(
 
         // Lembretes: dispara no máximo um, e só se nenhum estiver aberto.
         if !reminder_active.load(Ordering::Relaxed) {
+            let in_meeting = meeting::microphone_in_use();
             let due = {
                 let mut sched = schedule.lock().unwrap();
-                sched.tick(Instant::now(), state, idle_seconds)
+                sched.tick(now_inst, state, real_idle, in_meeting)
             };
             if let Some(payload) = due {
                 reminder_active.store(true, Ordering::Relaxed);
@@ -164,6 +235,7 @@ pub fn run_loop(
                     if let Some(w) = app3.get_webview_window("reminder") {
                         crate::place_reminder(&w);
                         let _ = w.show();
+                        let _ = w.set_focus(); // foco pra aceitar o clique de primeira
                     }
                 });
             }
