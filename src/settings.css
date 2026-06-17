@@ -1,0 +1,157 @@
+@import "./theme.css";
+
+body {
+  background: radial-gradient(
+    100% 60% at 50% -10%,
+    rgba(48, 217, 119, 0.1),
+    transparent 60%
+  );
+  overflow-y: auto;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 34px 22px 24px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-left: 64px; /* traffic lights */
+}
+.logo {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #05140c;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+}
+.title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.group {
+  padding: 14px 16px 16px;
+}
+.group h2 {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.row:first-of-type {
+  border-top: none;
+}
+.emoji {
+  font-size: 1.05rem;
+}
+.label {
+  flex: 1;
+  font-size: 0.92rem;
+}
+.hint {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--faint);
+  text-align: right;
+}
+
+.num {
+  width: 64px;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  color: var(--text);
+  text-align: center;
+  padding: 0.34rem 0.4rem;
+  border-radius: 9px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.22);
+}
+.num:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* switch estilo iOS */
+.switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex: none;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.2s var(--ease);
+}
+.switch span::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s var(--ease);
+}
+.switch input:checked + span {
+  background: var(--accent);
+}
+.switch input:checked + span::before {
+  transform: translateX(16px);
+}
+
+.save {
+  margin-top: 4px;
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #05140c;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 12px;
+  cursor: default;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 24px -10px var(--accent);
+  transition: filter 0.15s var(--ease);
+}
+.save:hover {
+  filter: brightness(1.07);
+}
+.save:active {
+  transform: translateY(1px);
+}
+
+/* esconde as setas dos number inputs */
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}

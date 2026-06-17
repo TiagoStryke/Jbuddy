@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/settings.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jbuddy</title>
+    <script type="module" src="/src/settings.ts" defer></script>
+  </head>
+  <body>
+    <main class="settings">
+      <header class="head" data-tauri-drag-region>
+        <span class="logo">J</span>
+        <h1 class="title" data-i18n="settings.title">Settings</h1>
+      </header>
+
+      <section class="group glass">
+        <h2 data-i18n="settings.reminders">Reminders</h2>
+        <div class="row">
+          <span class="emoji">💧</span>
+          <span class="label" data-i18n="settings.water">Water</span>
+          <input class="num tnum" id="water-int" type="number" min="1" max="240" />
+          <label class="switch"
+            ><input type="checkbox" id="water-on" /><span></span
+          ></label>
+        </div>
+        <div class="row">
+          <span class="emoji">🧍</span>
+          <span class="label" data-i18n="settings.stretch">Stretch</span>
+          <input class="num tnum" id="stretch-int" type="number" min="1" max="240" />
+          <label class="switch"
+            ><input type="checkbox" id="stretch-on" /><span></span
+          ></label>
+        </div>
+        <div class="row">
+          <span class="emoji">👀</span>
+          <span class="label" data-i18n="settings.eyes">Eyes</span>
+          <input class="num tnum" id="eyes-int" type="number" min="1" max="240" />
+          <label class="switch"
+            ><input type="checkbox" id="eyes-on" /><span></span
+          ></label>
+        </div>
+        <p class="hint" data-i18n="settings.every">every (min)</p>
+      </section>
+
+      <section class="group glass">
+        <h2 data-i18n="settings.activity">Activity</h2>
+        <div class="row">
+          <span class="label" data-i18n="settings.idle">idle after (s)</span>
+          <input class="num tnum" id="idle" type="number" min="5" max="3600" />
+        </div>
+        <div class="row">
+          <span class="label" data-i18n="settings.away">away after (s)</span>
+          <input class="num tnum" id="away" type="number" min="10" max="7200" />
+        </div>
+        <div class="row">
+          <span class="label" data-i18n="settings.snooze">snooze (min)</span>
+          <input class="num tnum" id="snooze" type="number" min="1" max="120" />
+        </div>
+      </section>
+
+      <section class="group glass">
+        <h2 data-i18n="settings.work">Work hours</h2>
+        <div class="row">
+          <span class="label" data-i18n="settings.start">start</span>
+          <input class="num tnum" id="work-start" type="number" min="0" max="23" />
+        </div>
+        <div class="row">
+          <span class="label" data-i18n="settings.end">end</span>
+          <input class="num tnum" id="work-end" type="number" min="0" max="23" />
+        </div>
+      </section>
+
+      <section class="group glass">
+        <h2 data-i18n="settings.screen">Screen</h2>
+        <div class="row">
+          <span class="label" data-i18n="settings.keepAwake"
+            >Keep the screen from turning off</span
+          >
+          <label class="switch"
+            ><input type="checkbox" id="keep-awake" /><span></span
+          ></label>
+        </div>
+      </section>
+
+      <button class="save" id="save" data-i18n="settings.save">Save</button>
+    </main>
+  </body>
+</html>
