@@ -1,11 +1,11 @@
 //! Motor de lembretes: tipos, mensagens rotativas e o agendador.
 //!
-//! O agendador decide, a cada tick do [`crate::tracker`], se algum lembrete deve
-//! disparar — respeitando: ausência (não avisa tela vazia), deep focus (adia se
-//! você está digitando sem parar, até um teto), e um por vez (não empilha).
+//! Os intervalos contam APENAS tempo de trabalho ATIVO — ocioso/ausente/almoço
+//! pausam o contador (você não volta do almoço e leva um lembrete na cara). Também
+//! adia em deep focus (digitando sem parar) até um teto, e dispara um por vez.
 
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use serde::Serialize;
 
@@ -16,8 +16,6 @@ use crate::tracker::ActivityState;
 const DEEP_FOCUS_IDLE: f64 = 8.0;
 /// Teto de adiamento por deep focus — depois disso, dispara mesmo assim.
 const MAX_DEFER: Duration = Duration::from_secs(10 * 60);
-/// Reagendamento curto quando adiamos (ausente ou deep focus).
-const RECHECK: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ReminderKind {
@@ -58,9 +56,9 @@ struct ReminderState {
     kind: ReminderKind,
     enabled: bool,
     interval: Duration,
-    next_due: Instant,
+    /// Tempo de trabalho ATIVO acumulado desde o último disparo.
+    elapsed: Duration,
     rotation: usize,
-    deferred_since: Option<Instant>,
 }
 
 pub struct Schedule {
@@ -71,17 +69,13 @@ pub struct Schedule {
 pub type SharedSchedule = Arc<Mutex<Schedule>>;
 
 impl Schedule {
-    pub fn from_config(cfg: &Config, now: Instant) -> Self {
-        let mk = |kind: ReminderKind, rc: &ReminderConfig| {
-            let interval = Duration::from_secs(rc.interval_secs.max(1));
-            ReminderState {
-                kind,
-                enabled: rc.enabled,
-                interval,
-                next_due: now + interval,
-                rotation: 0,
-                deferred_since: None,
-            }
+    pub fn from_config(cfg: &Config) -> Self {
+        let mk = |kind: ReminderKind, rc: &ReminderConfig| ReminderState {
+            kind,
+            enabled: rc.enabled,
+            interval: Duration::from_secs(rc.interval_secs.max(1)),
+            elapsed: Duration::ZERO,
+            rotation: 0,
         };
         Schedule {
             reminders: vec![
@@ -97,60 +91,57 @@ impl Schedule {
         self.reminders.iter_mut().find(|r| r.kind == kind)
     }
 
-    /// Soneca: dispara de novo daqui a `snooze`.
-    pub fn snooze(&mut self, kind: ReminderKind, now: Instant) {
+    /// Soneca: dispara de novo após `snooze` de trabalho ATIVO.
+    pub fn snooze(&mut self, kind: ReminderKind) {
         let snooze = self.snooze;
         if let Some(r) = self.find_mut(kind) {
-            r.next_due = now + snooze;
-            r.deferred_since = None;
+            r.elapsed = r.interval.saturating_sub(snooze);
         }
     }
 
-    /// "Feito" ou "pular": reagenda pro próximo intervalo cheio.
-    pub fn reschedule(&mut self, kind: ReminderKind, now: Instant) {
+    /// "Feito" ou "pular": zera o contador (intervalo cheio de novo).
+    pub fn reschedule(&mut self, kind: ReminderKind) {
         if let Some(r) = self.find_mut(kind) {
-            r.next_due = now + r.interval;
-            r.deferred_since = None;
+            r.elapsed = Duration::ZERO;
         }
     }
 
-    /// Avalia se algum lembrete deve disparar agora. No máximo um por chamada.
+    /// Acumula `elapsed` de trabalho ATIVO e dispara no máximo um lembrete.
+    /// Fora de "trabalhando" o contador NÃO anda (ocioso/ausente/almoço pausam),
+    /// então voltar de uma ausência não estoura lembretes.
     pub fn tick(
         &mut self,
-        now: Instant,
         state: ActivityState,
         idle_seconds: f64,
         in_meeting: bool,
+        elapsed: Duration,
     ) -> Option<ReminderPayload> {
+        if state != ActivityState::Working {
+            return None;
+        }
         for r in self.reminders.iter_mut() {
-            if !r.enabled || now < r.next_due {
+            if r.enabled {
+                r.elapsed += elapsed;
+            }
+        }
+        for r in self.reminders.iter_mut() {
+            if !r.enabled || r.elapsed < r.interval {
                 continue;
             }
-
-            // Ausente ou em reunião: não interrompe. Reavalia em breve.
-            if state == ActivityState::Away || in_meeting {
-                r.next_due = now + RECHECK;
+            // Em reunião: segura (mantém o tempo acumulado pra disparar depois).
+            if in_meeting {
                 continue;
             }
-
             // Deep focus: digitando sem parar → adia, até o teto.
-            if idle_seconds < DEEP_FOCUS_IDLE {
-                let since = *r.deferred_since.get_or_insert(now);
-                if now.duration_since(since) < MAX_DEFER {
-                    r.next_due = now + RECHECK;
-                    continue;
-                }
-                // passou do teto de adiamento: dispara mesmo assim.
+            if idle_seconds < DEEP_FOCUS_IDLE && r.elapsed < r.interval + MAX_DEFER {
+                continue;
             }
-
-            // Dispara.
             let payload = ReminderPayload {
                 kind: r.kind.id().to_string(),
                 rotation: r.rotation,
             };
             r.rotation = r.rotation.wrapping_add(1);
-            r.next_due = now + r.interval;
-            r.deferred_since = None;
+            r.elapsed = Duration::ZERO;
             return Some(payload);
         }
         None
@@ -161,58 +152,63 @@ impl Schedule {
 mod tests {
     use super::*;
 
-    fn schedule_now() -> (Schedule, Instant) {
-        let now = Instant::now();
-        (Schedule::from_config(&Config::default(), now), now)
+    fn sched() -> Schedule {
+        Schedule::from_config(&Config::default())
     }
+    const TICK: Duration = Duration::from_secs(5);
 
     #[test]
     fn nao_dispara_antes_do_intervalo() {
-        let (mut s, now) = schedule_now();
+        let mut s = sched();
+        assert!(s.tick(ActivityState::Working, 20.0, false, TICK).is_none());
+    }
+
+    #[test]
+    fn dispara_quando_acumula_o_intervalo() {
+        let mut s = sched();
+        // 21min de trabalho de uma vez → eyes (20min) vence
         assert!(s
-            .tick(now + Duration::from_secs(10), ActivityState::Working, 20.0, false)
+            .tick(ActivityState::Working, 20.0, false, Duration::from_secs(21 * 60))
+            .is_some());
+    }
+
+    #[test]
+    fn nao_acumula_quando_ausente() {
+        let mut s = sched();
+        // 2h ausente NÃO fazem o contador andar...
+        assert!(s
+            .tick(ActivityState::Away, 5000.0, false, Duration::from_secs(2 * 3600))
             .is_none());
-    }
-
-    #[test]
-    fn dispara_quando_devido_e_trabalhando() {
-        let (mut s, now) = schedule_now();
-        // eyes vence em 20min; aos 21min está devido
-        let due = now + Duration::from_secs(21 * 60);
-        assert!(s.tick(due, ActivityState::Working, 20.0, false).is_some());
-    }
-
-    #[test]
-    fn nao_dispara_quando_ausente() {
-        let (mut s, now) = schedule_now();
-        let due = now + Duration::from_secs(21 * 60);
-        assert!(s.tick(due, ActivityState::Away, 5000.0, false).is_none());
+        // ...e ao voltar, ainda não está devido (nada acumulou na ausência).
+        assert!(s.tick(ActivityState::Working, 20.0, false, TICK).is_none());
     }
 
     #[test]
     fn nao_dispara_em_reuniao() {
-        let (mut s, now) = schedule_now();
-        let due = now + Duration::from_secs(21 * 60);
-        // trabalhando, devido, mas com o mic em uso (reunião) → segura
-        assert!(s.tick(due, ActivityState::Working, 20.0, true).is_none());
+        let mut s = sched();
+        assert!(s
+            .tick(ActivityState::Working, 20.0, true, Duration::from_secs(21 * 60))
+            .is_none());
     }
 
     #[test]
     fn adia_durante_deep_focus() {
-        let (mut s, now) = schedule_now();
-        let due = now + Duration::from_secs(21 * 60);
-        // idle baixíssimo = digitando agora → adia (primeira vez)
-        assert!(s.tick(due, ActivityState::Working, 2.0, false).is_none());
+        let mut s = sched();
+        // devido, mas digitando sem parar (idle baixo) → adia
+        assert!(s
+            .tick(ActivityState::Working, 2.0, false, Duration::from_secs(21 * 60))
+            .is_none());
     }
 
     #[test]
     fn dispara_apos_teto_de_adiamento() {
-        let (mut s, now) = schedule_now();
-        let due = now + Duration::from_secs(21 * 60);
-        // primeira avaliação em deep focus marca deferred_since
-        assert!(s.tick(due, ActivityState::Working, 2.0, false).is_none());
-        // muito depois do teto, ainda em deep focus → dispara mesmo assim
-        let later = due + MAX_DEFER + Duration::from_secs(1);
-        assert!(s.tick(later, ActivityState::Working, 2.0, false).is_some());
+        let mut s = sched();
+        assert!(s
+            .tick(ActivityState::Working, 2.0, false, Duration::from_secs(21 * 60))
+            .is_none());
+        // passou do teto de adiamento, ainda em deep focus → dispara
+        assert!(s
+            .tick(ActivityState::Working, 2.0, false, MAX_DEFER)
+            .is_some());
     }
 }

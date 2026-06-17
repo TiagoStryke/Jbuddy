@@ -168,19 +168,22 @@ pub fn run_loop(
 
     loop {
         // Snapshot da config deste tick (a tela de configs altera ao vivo).
-        let (th, keep_awake, work_start, work_end, target_secs) = match config.lock() {
-            Ok(c) => (
-                Thresholds {
-                    idle_secs: c.idle_secs,
-                    away_secs: c.away_secs,
-                },
-                c.keep_screen_awake,
-                c.work_start_hour,
-                c.work_end_hour,
-                (c.target_work_hours * 3600.0) as i64,
-            ),
-            Err(_) => (Thresholds::default(), false, 9, 24, 8 * 3600),
-        };
+        let (th, keep_awake, work_start, work_end, lunch_start, lunch_end, target_secs) =
+            match config.lock() {
+                Ok(c) => (
+                    Thresholds {
+                        idle_secs: c.idle_secs,
+                        away_secs: c.away_secs,
+                    },
+                    c.keep_screen_awake,
+                    c.work_start_hour,
+                    c.work_end_hour,
+                    c.lunch_start_hour,
+                    c.lunch_end_hour,
+                    (c.target_work_hours * 3600.0) as i64,
+                ),
+                Err(_) => (Thresholds::default(), false, 9, 24, 12, 12, 8 * 3600),
+            };
 
         let now_inst = Instant::now();
         let hid_idle = idle::seconds_since_last_input();
@@ -245,9 +248,18 @@ pub fn run_loop(
             seen_before_end = true;
         }
 
+        // Almoço fora do PC = fora do expediente: não credita (nem como ausente).
+        // Se estiver TRABALHANDO no horário de almoço, conta normal.
+        let in_lunch = lunch_start != lunch_end
+            && (hour as u32) >= lunch_start
+            && (hour as u32) < lunch_end;
+        let skip_credit = in_lunch && state != ActivityState::Working;
+
         let (working, idle_t, away) = if let Some(store) = &store {
-            if let Err(e) = store.credit(&date, hour, state, POLL_SECS as i64) {
-                eprintln!("[jbuddy] falha ao gravar: {e}");
+            if !skip_credit {
+                if let Err(e) = store.credit(&date, hour, state, POLL_SECS as i64) {
+                    eprintln!("[jbuddy] falha ao gravar: {e}");
+                }
             }
             store.today_totals(&date).unwrap_or((0, 0, 0))
         } else {
@@ -282,7 +294,7 @@ pub fn run_loop(
             let in_meeting = meeting::microphone_in_use();
             // lock graceful: um panic aqui mataria a thread e sumiria com o tray.
             let due = match schedule.lock() {
-                Ok(mut sched) => sched.tick(now_inst, state, real_idle, in_meeting),
+                Ok(mut sched) => sched.tick(state, real_idle, in_meeting, poll),
                 Err(_) => None,
             };
             let fire: Option<(String, usize)> = if let Some(p) = due {

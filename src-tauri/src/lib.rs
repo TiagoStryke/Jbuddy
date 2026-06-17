@@ -14,7 +14,6 @@ mod tracker;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -81,7 +80,7 @@ fn save_config(
         *c = new_config;
         c.save();
         if let Ok(mut s) = schedule.lock() {
-            *s = Schedule::from_config(&c, Instant::now());
+            *s = Schedule::from_config(&c);
         }
     }
 }
@@ -97,11 +96,10 @@ fn reminder_action(
     action: String,
 ) {
     if let Some(k) = ReminderKind::from_id(&kind) {
-        let now = Instant::now();
         if let Ok(mut s) = schedule.lock() {
             match action.as_str() {
-                "snooze" => s.snooze(k, now),
-                _ => s.reschedule(k, now),
+                "snooze" => s.snooze(k),
+                _ => s.reschedule(k),
             }
         }
     }
@@ -132,7 +130,7 @@ pub fn run() {
     let config: SharedConfig = Arc::new(Mutex::new(Config::load()));
     let schedule: SharedSchedule = {
         let c = config.lock().expect("config lock");
-        Arc::new(Mutex::new(Schedule::from_config(&c, Instant::now())))
+        Arc::new(Mutex::new(Schedule::from_config(&c)))
     };
     // true enquanto uma janela de lembrete está aberta (evita empilhar).
     let reminder_active = Arc::new(AtomicBool::new(false));
