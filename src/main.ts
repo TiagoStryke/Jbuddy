@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { applyStatic, stateLabel } from "./i18n";
+import { applyStatic, lang, stateLabel, t } from "./i18n";
 
 interface Snapshot {
   state: string;
@@ -7,17 +7,23 @@ interface Snapshot {
   idle_secs: number;
   away_secs: number;
 }
+interface HourStat {
+  hour: number;
+  working_secs: number;
+}
+interface DayStat {
+  date: string;
+  working_secs: number;
+}
 
-// Meta diária de foco (provisória; vira configurável depois).
 const GOAL_SECS = 6 * 3600;
 const RING_R = 86;
 const RING_C = 2 * Math.PI * RING_R;
+const LOCALE = lang === "pt" ? "pt-BR" : "en-US";
 
 function fmt(secs: number): string {
   const min = Math.floor(secs / 60);
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h}h${String(m).padStart(2, "0")}`;
+  return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
 }
 
 function setText(id: string, value: string) {
@@ -25,15 +31,18 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
-function setRing(workingSecs: number) {
-  const ring = document.getElementById("ring") as SVGCircleElement | null;
-  if (!ring) return;
-  const pct = Math.max(0, Math.min(1, workingSecs / GOAL_SECS));
-  ring.style.strokeDasharray = `${RING_C}`;
-  ring.style.strokeDashoffset = `${RING_C * (1 - pct)}`;
+function dateKey(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-async function refresh() {
+function weekdayShort(dateKey: string): string {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(LOCALE, {
+    weekday: "short",
+  });
+}
+
+async function refreshStats() {
   try {
     const s = await invoke<Snapshot>("get_today_stats");
     setText("working", fmt(s.working_secs));
@@ -50,14 +59,87 @@ async function refresh() {
       tracked > 0 ? `${Math.round((s.working_secs / tracked) * 100)}%` : "—",
     );
 
-    setRing(s.working_secs);
+    const ring = document.getElementById("ring") as SVGCircleElement | null;
+    if (ring) {
+      const pct = Math.max(0, Math.min(1, s.working_secs / GOAL_SECS));
+      ring.style.strokeDasharray = `${RING_C}`;
+      ring.style.strokeDashoffset = `${RING_C * (1 - pct)}`;
+    }
   } catch (e) {
     console.error("get_today_stats falhou:", e);
   }
 }
 
+async function renderWeek() {
+  const days = await invoke<DayStat[]>("get_week");
+  const map = new Map(days.map((d) => [d.date, d.working_secs]));
+  const today = new Date();
+  const items = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = dateKey(d);
+    items.push({ key, secs: map.get(key) ?? 0, isToday: i === 0 });
+  }
+  const max = Math.max(1, ...items.map((x) => x.secs));
+  const host = document.getElementById("week");
+  if (!host) return;
+  host.innerHTML = "";
+  for (const it of items) {
+    const col = document.createElement("div");
+    col.className = `day${it.secs === 0 ? " empty" : ""}${it.isToday ? " today" : ""}`;
+    const bar = document.createElement("div");
+    bar.className = "day-bar";
+    bar.style.height = `${it.secs === 0 ? 3 : Math.max(6, (it.secs / max) * 100)}%`;
+    bar.title = fmt(it.secs);
+    const label = document.createElement("span");
+    label.className = "day-label";
+    label.textContent = weekdayShort(it.key);
+    col.append(bar, label);
+    host.append(col);
+  }
+}
+
+async function renderHours() {
+  const stats = await invoke<HourStat[]>("get_heatmap");
+  const byHour = new Map(stats.map((s) => [s.hour, s.working_secs]));
+  const vals = Array.from({ length: 24 }, (_, h) => byHour.get(h) ?? 0);
+  const max = Math.max(1, ...vals);
+  let peakHour = -1;
+  let peakVal = 0;
+  vals.forEach((v, h) => {
+    if (v > peakVal) {
+      peakVal = v;
+      peakHour = h;
+    }
+  });
+
+  const host = document.getElementById("hours");
+  if (host) {
+    host.innerHTML = "";
+    vals.forEach((v, h) => {
+      const bar = document.createElement("div");
+      bar.className = `hour-bar${v > 0 ? " has" : ""}${h === peakHour && peakVal > 0 ? " peak" : ""}`;
+      bar.style.height = `${v > 0 ? Math.max(8, (v / max) * 100) : 2}%`;
+      bar.title = `${h}h · ${fmt(v)}`;
+      host.append(bar);
+    });
+  }
+  setText("peak", peakVal > 0 ? `${t("dash.peak")} ${peakHour}h` : "");
+}
+
+async function refreshReports() {
+  try {
+    await Promise.all([renderWeek(), renderHours()]);
+  } catch (e) {
+    console.error("relatórios falharam:", e);
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   applyStatic();
-  refresh();
-  setInterval(refresh, 5000);
+  refreshStats();
+  refreshReports();
+  setInterval(refreshStats, 5000);
+  setInterval(refreshReports, 60000);
 });

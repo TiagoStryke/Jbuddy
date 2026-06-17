@@ -66,6 +66,16 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
+/* faixa de arrasto cobrindo o topo inteiro (barra de título de qualquer app) */
+.drag-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 50;
+}
+
 /* cartão de vidro reutilizável */
 .glass {
   background: var(--glass);

@@ -8,6 +8,7 @@
     <script type="module" src="/src/settings.ts" defer></script>
   </head>
   <body>
+    <div class="drag-strip" data-tauri-drag-region></div>
     <main class="settings">
       <header class="head" data-tauri-drag-region>
         <span class="logo">J</span>
@@ -68,6 +69,10 @@
         <div class="row">
           <span class="label" data-i18n="settings.end">end</span>
           <input class="num tnum" id="work-end" type="number" min="0" max="23" />
+        </div>
+        <div class="row">
+          <span class="label" data-i18n="settings.target">daily goal (h)</span>
+          <input class="num tnum" id="target" type="number" min="1" max="16" step="0.5" />
         </div>
       </section>
 

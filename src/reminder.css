@@ -10,6 +10,15 @@ body[data-kind="stretch"] {
 body[data-kind="eyes"] {
   --hue: var(--eyes);
 }
+body[data-kind="nobreak"] {
+  --hue: var(--stretch);
+}
+body[data-kind="overtime"] {
+  --hue: var(--accent);
+}
+body[data-kind="endday"] {
+  --hue: var(--eyes);
+}
 body {
   --hue: var(--water);
   /* brilho do matiz no canto, por cima do material nativo */
