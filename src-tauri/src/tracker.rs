@@ -161,6 +161,10 @@ pub fn run_loop(
     let mut overtime_fired = false;
     let mut endday_fired = false;
     let mut flag_date = String::new();
+    // "endday" só dispara se vimos o expediente ANTES do fim nesta sessão (evita
+    // disparar no boot tardio). "prev_working" detecta o cruzamento da meta.
+    let mut seen_before_end = false;
+    let mut prev_working: Option<i64> = None;
 
     loop {
         // Snapshot da config deste tick (a tela de configs altera ao vivo).
@@ -234,6 +238,11 @@ pub fn run_loop(
             flag_date = date.clone();
             overtime_fired = false;
             endday_fired = false;
+            seen_before_end = false;
+        }
+        // Marca que estávamos no expediente antes do fim (pro ritual de fim de dia).
+        if now.weekday().num_days_from_monday() < 5 && (hour as u32) < work_end {
+            seen_before_end = true;
         }
 
         let (working, idle_t, away) = if let Some(store) = &store {
@@ -285,10 +294,18 @@ pub fn run_loop(
             {
                 nobreak_warned = true;
                 Some(("nobreak".to_string(), 0))
-            } else if !overtime_fired && working >= target_secs && state == ActivityState::Working {
+            } else if !overtime_fired
+                && prev_working.is_some_and(|p| p < target_secs)
+                && working >= target_secs
+                && state == ActivityState::Working
+            {
                 overtime_fired = true;
                 Some(("overtime".to_string(), 0))
-            } else if !endday_fired && is_after_work_end(work_end) && state != ActivityState::Away {
+            } else if !endday_fired
+                && seen_before_end
+                && is_after_work_end(work_end)
+                && state != ActivityState::Away
+            {
                 endday_fired = true;
                 Some(("endday".to_string(), 0))
             } else {
@@ -299,6 +316,7 @@ pub fn run_loop(
                 show_reminder(&app, &kind, rotation);
             }
         }
+        prev_working = Some(working);
 
         thread::sleep(poll);
     }

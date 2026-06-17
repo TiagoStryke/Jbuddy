@@ -42,7 +42,11 @@ impl Store {
         std::fs::create_dir_all(&dir).ok();
         let conn = Connection::open(dir.join("jbuddy.db"))?;
         conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS daily (
+            // WAL: leitores (relatórios) não bloqueiam com a escrita do tracker.
+            // busy_timeout: espera em vez de falhar na rara colisão.
+            "PRAGMA journal_mode = WAL;
+            PRAGMA busy_timeout = 5000;
+            CREATE TABLE IF NOT EXISTS daily (
                 date         TEXT PRIMARY KEY,
                 working_secs INTEGER NOT NULL DEFAULT 0,
                 idle_secs    INTEGER NOT NULL DEFAULT 0,
