@@ -223,9 +223,10 @@ pub fn run_loop(
         // Lembretes: dispara no máximo um, e só se nenhum estiver aberto.
         if !reminder_active.load(Ordering::Relaxed) {
             let in_meeting = meeting::microphone_in_use();
-            let due = {
-                let mut sched = schedule.lock().unwrap();
-                sched.tick(now_inst, state, real_idle, in_meeting)
+            // lock graceful: um panic aqui mataria a thread e sumiria com o tray.
+            let due = match schedule.lock() {
+                Ok(mut sched) => sched.tick(now_inst, state, real_idle, in_meeting),
+                Err(_) => None,
             };
             if let Some(payload) = due {
                 reminder_active.store(true, Ordering::Relaxed);
