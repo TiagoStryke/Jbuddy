@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
+use serde::Serialize;
 
 use crate::tracker::ActivityState;
 
@@ -15,6 +16,24 @@ pub struct Store {
 
 /// Totais (trabalhando, ocioso, ausente) em segundos.
 pub type Totals = (i64, i64, i64);
+
+/// Estatística de uma hora-do-dia (0–23).
+#[derive(Debug, Serialize)]
+pub struct HourStat {
+    pub hour: u32,
+    pub working_secs: i64,
+    pub idle_secs: i64,
+    pub away_secs: i64,
+}
+
+/// Estatística de um dia.
+#[derive(Debug, Serialize)]
+pub struct DayStat {
+    pub date: String,
+    pub working_secs: i64,
+    pub idle_secs: i64,
+    pub away_secs: i64,
+}
 
 impl Store {
     /// Abre (criando o diretório e as tabelas se preciso).
@@ -90,6 +109,57 @@ impl Store {
                 rusqlite::Error::QueryReturnedNoRows => Ok((0, 0, 0)),
                 other => Err(other),
             })
+    }
+
+    /// Buckets por hora de um dia.
+    pub fn day_hourly(&self, date: &str) -> rusqlite::Result<Vec<HourStat>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT hour, working_secs, idle_secs, away_secs
+             FROM hourly WHERE date = ?1 ORDER BY hour",
+        )?;
+        let rows = stmt.query_map(params![date], |r| {
+            Ok(HourStat {
+                hour: r.get::<_, i64>(0)? as u32,
+                working_secs: r.get(1)?,
+                idle_secs: r.get(2)?,
+                away_secs: r.get(3)?,
+            })
+        })?;
+        rows.collect()
+    }
+
+    /// Totais diários num intervalo (inclusivo), em ordem de data.
+    pub fn range_daily(&self, from: &str, to: &str) -> rusqlite::Result<Vec<DayStat>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT date, working_secs, idle_secs, away_secs
+             FROM daily WHERE date BETWEEN ?1 AND ?2 ORDER BY date",
+        )?;
+        let rows = stmt.query_map(params![from, to], |r| {
+            Ok(DayStat {
+                date: r.get(0)?,
+                working_secs: r.get(1)?,
+                idle_secs: r.get(2)?,
+                away_secs: r.get(3)?,
+            })
+        })?;
+        rows.collect()
+    }
+
+    /// Heatmap: foco somado por hora-do-dia em TODO o histórico (pico × ocioso).
+    pub fn heatmap(&self) -> rusqlite::Result<Vec<HourStat>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT hour, SUM(working_secs), SUM(idle_secs), SUM(away_secs)
+             FROM hourly GROUP BY hour ORDER BY hour",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(HourStat {
+                hour: r.get::<_, i64>(0)? as u32,
+                working_secs: r.get(1)?,
+                idle_secs: r.get(2)?,
+                away_secs: r.get(3)?,
+            })
+        })?;
+        rows.collect()
     }
 }
 

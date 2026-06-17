@@ -29,6 +29,9 @@ const POLL_SECS: u64 = 5;
 /// Intervalo mínimo entre nudges de keep-alive (Teams marca ausente ~5min).
 const KEEP_ALIVE_SECS: u64 = 150;
 
+/// Tempo contínuo trabalhando sem pausa que dispara o aviso anti-excesso.
+const NO_BREAK_SECS: u64 = 90 * 60;
+
 /// Dia útil e dentro do horário de trabalho configurado.
 fn is_work_hours(start: u32, end: u32) -> bool {
     let now = Local::now();
@@ -41,6 +44,26 @@ fn is_work_hours(start: u32, end: u32) -> bool {
     } else {
         h >= start || h < end
     }
+}
+
+/// Dia útil e já passou do fim do expediente.
+fn is_after_work_end(end: u32) -> bool {
+    let now = Local::now();
+    now.weekday().num_days_from_monday() < 5 && now.hour() >= end
+}
+
+/// Mostra um lembrete (qualquer tipo) na janela do canto.
+fn show_reminder(app: &AppHandle, kind: &str, rotation: usize) {
+    let payload = serde_json::json!({ "kind": kind, "rotation": rotation });
+    let app2 = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let _ = app2.emit_to("reminder", "show-reminder", payload);
+        if let Some(w) = app2.get_webview_window("reminder") {
+            crate::place_reminder(&w);
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    });
 }
 
 /// Estado de atividade derivado do tempo de idle.
@@ -126,14 +149,22 @@ pub fn run_loop(
     let reminder_active = app.state::<Arc<AtomicBool>>().inner().clone();
     let poll = Duration::from_secs(POLL_SECS);
     let keep_alive_gap = Duration::from_secs(KEEP_ALIVE_SECS);
+    let no_break = Duration::from_secs(NO_BREAK_SECS);
 
     // Atividade REAL (exclui os nudges do próprio keep-alive).
     let mut last_real_activity = Instant::now();
     let mut last_nudge: Option<Instant> = None;
 
+    // Guarda anti-excesso + ritual de fim de expediente.
+    let mut continuous_work = Duration::ZERO;
+    let mut nobreak_warned = false;
+    let mut overtime_fired = false;
+    let mut endday_fired = false;
+    let mut flag_date = String::new();
+
     loop {
         // Snapshot da config deste tick (a tela de configs altera ao vivo).
-        let (th, keep_awake, work_start, work_end) = match config.lock() {
+        let (th, keep_awake, work_start, work_end, target_secs) = match config.lock() {
             Ok(c) => (
                 Thresholds {
                     idle_secs: c.idle_secs,
@@ -142,8 +173,9 @@ pub fn run_loop(
                 c.keep_screen_awake,
                 c.work_start_hour,
                 c.work_end_hour,
+                (c.target_work_hours * 3600.0) as i64,
             ),
-            Err(_) => (Thresholds::default(), false, 9, 24),
+            Err(_) => (Thresholds::default(), false, 9, 24, 8 * 3600),
         };
 
         let now_inst = Instant::now();
@@ -185,9 +217,24 @@ pub fn run_loop(
             last_nudge = Some(now_inst);
         }
 
+        // Trabalho contínuo (pra guarda anti-excesso). Qualquer pausa zera.
+        if state == ActivityState::Working {
+            continuous_work += poll;
+        } else {
+            continuous_work = Duration::ZERO;
+            nobreak_warned = false;
+        }
+
         let now = Local::now();
         let date = now.format("%Y-%m-%d").to_string();
         let hour = now.hour() as i64;
+
+        // Reset diário dos avisos "uma vez por dia".
+        if date != flag_date {
+            flag_date = date.clone();
+            overtime_fired = false;
+            endday_fired = false;
+        }
 
         let (working, idle_t, away) = if let Some(store) = &store {
             if let Err(e) = store.credit(&date, hour, state, POLL_SECS as i64) {
@@ -220,7 +267,8 @@ pub fn run_loop(
             let _ = si.set_text(status_text);
         });
 
-        // Lembretes: dispara no máximo um, e só se nenhum estiver aberto.
+        // Lembretes (intervalo + anti-excesso + fim de expediente): no máximo
+        // um por vez, e só se nenhum estiver aberto.
         if !reminder_active.load(Ordering::Relaxed) {
             let in_meeting = meeting::microphone_in_use();
             // lock graceful: um panic aqui mataria a thread e sumiria com o tray.
@@ -228,17 +276,27 @@ pub fn run_loop(
                 Ok(mut sched) => sched.tick(now_inst, state, real_idle, in_meeting),
                 Err(_) => None,
             };
-            if let Some(payload) = due {
+            let fire: Option<(String, usize)> = if let Some(p) = due {
+                Some((p.kind, p.rotation))
+            } else if !nobreak_warned
+                && continuous_work >= no_break
+                && state == ActivityState::Working
+                && !in_meeting
+            {
+                nobreak_warned = true;
+                Some(("nobreak".to_string(), 0))
+            } else if !overtime_fired && working >= target_secs && state == ActivityState::Working {
+                overtime_fired = true;
+                Some(("overtime".to_string(), 0))
+            } else if !endday_fired && is_after_work_end(work_end) && state != ActivityState::Away {
+                endday_fired = true;
+                Some(("endday".to_string(), 0))
+            } else {
+                None
+            };
+            if let Some((kind, rotation)) = fire {
                 reminder_active.store(true, Ordering::Relaxed);
-                let app3 = app.clone();
-                let _ = app.run_on_main_thread(move || {
-                    let _ = app3.emit_to("reminder", "show-reminder", payload);
-                    if let Some(w) = app3.get_webview_window("reminder") {
-                        crate::place_reminder(&w);
-                        let _ = w.show();
-                        let _ = w.set_focus(); // foco pra aceitar o clique de primeira
-                    }
-                });
+                show_reminder(&app, &kind, rotation);
             }
         }
 

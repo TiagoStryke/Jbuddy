@@ -18,7 +18,7 @@ use std::time::Instant;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 use config::Config;
 use reminders::{ReminderKind, Schedule, SharedSchedule};
@@ -36,6 +36,36 @@ type SharedConfig = Arc<Mutex<Config>>;
 #[tauri::command]
 fn get_config(config: State<'_, SharedConfig>) -> Config {
     config.lock().map(|c| c.clone()).unwrap_or_default()
+}
+
+/// Buckets por hora de hoje (pro gráfico "hoje por hora").
+#[tauri::command]
+fn get_today_hourly() -> Vec<store::HourStat> {
+    let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+    store::Store::open()
+        .and_then(|s| s.day_hourly(&date))
+        .unwrap_or_default()
+}
+
+/// Totais dos últimos 7 dias (pro gráfico da semana).
+#[tauri::command]
+fn get_week() -> Vec<store::DayStat> {
+    let today = chrono::Local::now().date_naive();
+    let from = (today - chrono::Duration::days(6))
+        .format("%Y-%m-%d")
+        .to_string();
+    let to = today.format("%Y-%m-%d").to_string();
+    store::Store::open()
+        .and_then(|s| s.range_daily(&from, &to))
+        .unwrap_or_default()
+}
+
+/// Heatmap de foco por hora-do-dia em todo o histórico (pico × ocioso).
+#[tauri::command]
+fn get_heatmap() -> Vec<store::HourStat> {
+    store::Store::open()
+        .and_then(|s| s.heatmap())
+        .unwrap_or_default()
 }
 
 /// Salva a config (da tela de configurações), persiste e reaplica ao vivo:
@@ -117,7 +147,10 @@ pub fn run() {
             get_today_stats,
             get_config,
             save_config,
-            reminder_action
+            reminder_action,
+            get_today_hourly,
+            get_week,
+            get_heatmap
         ])
         .setup(move |app| {
             // App de bandeja puro: sem ícone na Dock (macOS).
@@ -145,8 +178,6 @@ pub fn run() {
             let open_item = MenuItem::with_id(&handle, "open", t.open, true, None::<&str>)?;
             let settings_item =
                 MenuItem::with_id(&handle, "settings", t.settings, true, None::<&str>)?;
-            let test_item =
-                MenuItem::with_id(&handle, "test_reminder", t.test, true, None::<&str>)?;
             let quit_item = PredefinedMenuItem::quit(&handle, Some(t.quit))?;
             let sep = PredefinedMenuItem::separator(&handle)?;
             let menu = Menu::with_items(
@@ -157,7 +188,6 @@ pub fn run() {
                     &sep,
                     &open_item,
                     &settings_item,
-                    &test_item,
                     &quit_item,
                 ],
             )?;
@@ -184,18 +214,6 @@ pub fn run() {
                         if let Some(win) = app.get_webview_window("settings") {
                             let _ = win.show();
                             let _ = win.set_focus();
-                        }
-                    }
-                    "test_reminder" => {
-                        let payload = serde_json::json!({ "kind": "water", "rotation": 0 });
-                        let _ = app.emit_to("reminder", "show-reminder", payload);
-                        if let Some(win) = app.get_webview_window("reminder") {
-                            place_reminder(&win);
-                            let _ = win.show();
-                            let _ = win.set_focus();
-                        }
-                        if let Some(active) = app.try_state::<Arc<AtomicBool>>() {
-                            active.store(true, Ordering::Relaxed);
                         }
                     }
                     _ => {}

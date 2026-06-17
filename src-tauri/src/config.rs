@@ -28,6 +28,8 @@ pub struct Config {
     pub snooze_secs: u64,
     pub work_start_hour: u32,
     pub work_end_hour: u32,
+    /// Meta de horas focadas por dia — alimenta a guarda anti-excesso.
+    pub target_work_hours: f64,
     /// "Impede o notebook de desligar a tela" — keep-alive de sessão (scroll-zero)
     /// só em horário de trabalho e quando você está fora. Opt-in. Default off.
     pub keep_screen_awake: bool,
@@ -44,6 +46,7 @@ impl Default for Config {
             snooze_secs: 10 * 60,
             work_start_hour: 9,
             work_end_hour: 18,
+            target_work_hours: 8.0,
             keep_screen_awake: false,
         }
     }
