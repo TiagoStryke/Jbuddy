@@ -28,10 +28,12 @@ pub struct Config {
     pub snooze_secs: u64,
     pub work_start_hour: u32,
     pub work_end_hour: u32,
-    /// Horário de almoço — quando você está fora nesse intervalo, NÃO conta como
-    /// ausência (é fora do expediente). `start == end` desliga.
+    /// JANELA de almoço (ex: 12–14h): a ausência DENTRO dela, até `lunch_minutes`
+    /// no total, é entendida como o almoço e NÃO conta como ausência. O excedente
+    /// volta a contar. `start == end` desliga.
     pub lunch_start_hour: u32,
     pub lunch_end_hour: u32,
+    pub lunch_minutes: u64,
     /// Meta de horas focadas por dia — alimenta a guarda anti-excesso.
     pub target_work_hours: f64,
     /// "Impede o notebook de desligar a tela" — keep-alive de sessão (scroll-zero)
@@ -51,7 +53,8 @@ impl Default for Config {
             work_start_hour: 9,
             work_end_hour: 18,
             lunch_start_hour: 12,
-            lunch_end_hour: 13,
+            lunch_end_hour: 14,
+            lunch_minutes: 60,
             target_work_hours: 8.0,
             keep_screen_awake: false,
         }

@@ -16,6 +16,7 @@ interface Config {
   work_end_hour: number;
   lunch_start_hour: number;
   lunch_end_hour: number;
+  lunch_minutes: number;
   target_work_hours: number;
   keep_screen_awake: boolean;
 }
@@ -43,6 +44,7 @@ async function load() {
   el("work-end").value = String(c.work_end_hour);
   el("lunch-start").value = String(c.lunch_start_hour);
   el("lunch-end").value = String(c.lunch_end_hour);
+  el("lunch-mins").value = String(c.lunch_minutes);
   el("target").value = String(c.target_work_hours);
   el("keep-awake").checked = c.keep_screen_awake;
 }
@@ -63,6 +65,7 @@ function collect(): Config {
     work_end_hour: clamp(parseInt(el("work-end").value, 10), 0, 23),
     lunch_start_hour: clamp(parseInt(el("lunch-start").value, 10), 0, 23),
     lunch_end_hour: clamp(parseInt(el("lunch-end").value, 10), 0, 23),
+    lunch_minutes: clamp(parseInt(el("lunch-mins").value, 10), 0, 240),
     target_work_hours: clamp(parseFloat(el("target").value), 1, 16),
     keep_screen_awake: el("keep-awake").checked,
   };

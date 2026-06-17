@@ -165,10 +165,12 @@ pub fn run_loop(
     // disparar no boot tardio). "prev_working" detecta o cruzamento da meta.
     let mut seen_before_end = false;
     let mut prev_working: Option<i64> = None;
+    // Cota de almoço já consumida hoje (ausência dentro da janela).
+    let mut lunch_used = Duration::ZERO;
 
     loop {
         // Snapshot da config deste tick (a tela de configs altera ao vivo).
-        let (th, keep_awake, work_start, work_end, lunch_start, lunch_end, target_secs) =
+        let (th, keep_awake, work_start, work_end, lunch_start, lunch_end, lunch_minutes, target_secs) =
             match config.lock() {
                 Ok(c) => (
                     Thresholds {
@@ -180,9 +182,10 @@ pub fn run_loop(
                     c.work_end_hour,
                     c.lunch_start_hour,
                     c.lunch_end_hour,
+                    c.lunch_minutes,
                     (c.target_work_hours * 3600.0) as i64,
                 ),
-                Err(_) => (Thresholds::default(), false, 9, 24, 12, 12, 8 * 3600),
+                Err(_) => (Thresholds::default(), false, 9, 24, 12, 12, 60, 8 * 3600),
             };
 
         let now_inst = Instant::now();
@@ -242,18 +245,29 @@ pub fn run_loop(
             overtime_fired = false;
             endday_fired = false;
             seen_before_end = false;
+            lunch_used = Duration::ZERO;
         }
         // Marca que estávamos no expediente antes do fim (pro ritual de fim de dia).
         if now.weekday().num_days_from_monday() < 5 && (hour as u32) < work_end {
             seen_before_end = true;
         }
 
-        // Almoço fora do PC = fora do expediente: não credita (nem como ausente).
-        // Se estiver TRABALHANDO no horário de almoço, conta normal.
-        let in_lunch = lunch_start != lunch_end
+        // Janela de almoço: enquanto você está AUSENTE dentro da janela, consome
+        // a cota de almoço — esse tempo é o almoço (fora do expediente), não conta
+        // como ausência. Passou da cota, o excedente volta a contar como ausente.
+        let in_lunch_window = lunch_start != lunch_end
             && (hour as u32) >= lunch_start
             && (hour as u32) < lunch_end;
-        let skip_credit = in_lunch && state != ActivityState::Working;
+        let lunch_allowance = Duration::from_secs(lunch_minutes * 60);
+        let skip_credit = if in_lunch_window
+            && state == ActivityState::Away
+            && lunch_used < lunch_allowance
+        {
+            lunch_used += poll;
+            true
+        } else {
+            false
+        };
 
         let (working, idle_t, away) = if let Some(store) = &store {
             if !skip_credit {
