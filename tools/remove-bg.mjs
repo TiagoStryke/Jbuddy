@@ -15,12 +15,17 @@ import jpeg from "jpeg-js";
 const SRC = join(process.cwd(), "assets-gen");
 const OUT_ROOT = join(process.cwd(), "src/assets/mascot");
 
-// Um pixel é "fundo" se é dessaturado (cinza) E não tem dominância de verde.
-function isBg(r, g, b) {
-  const mx = Math.max(r, g, b);
-  const mn = Math.min(r, g, b);
-  const greenDom = g - (r + b) / 2;
-  return mx - mn < 32 && greenDom < 12;
+// "Fundo/sombra" por COR (medido nas imagens): a sombra verde é quase cinza
+// (sat baixo), a rosa é tingida (sat médio) — os corpos têm sat bem mais alto.
+// O brilho protege o topo claro/highlight (sobretudo no rosa).
+const TH = {
+  green: { sat: 22, bright: 205 },
+  pink: { sat: 52, bright: 150 },
+};
+function isBg(r, g, b, th) {
+  const sat = Math.max(r, g, b) - Math.min(r, g, b);
+  const bright = (r + g + b) / 3;
+  return sat < th.sat && bright < th.bright;
 }
 
 function process_(color, file) {
@@ -29,6 +34,7 @@ function process_(color, file) {
     readFileSync(join(SRC, color, file)),
     { formatAsRGBA: true },
   );
+  const th = TH[color] || TH.green;
   const idx = (x, y) => (y * w + x) * 4;
   const removed = new Uint8Array(w * h); // 1 = virou fundo (alpha 0)
   const stack = [];
@@ -37,7 +43,7 @@ function process_(color, file) {
     const p = y * w + x;
     if (removed[p]) return;
     const i = p * 4;
-    if (!isBg(data[i], data[i + 1], data[i + 2])) return;
+    if (!isBg(data[i], data[i + 1], data[i + 2], th)) return;
     removed[p] = 1;
     data[i + 3] = 0;
     stack.push(x, y);
@@ -72,6 +78,51 @@ function process_(color, file) {
       if (edge) data[p * 4 + 3] = 200;
     }
   }
+  // mantém só o MAIOR componente conectado opaco (o mascote) e zera respingos
+  // soltos (sombra de chão, manchas) — agnóstico de cor.
+  const opaque = (p) => data[p * 4 + 3] > 40;
+  const comp = new Int32Array(w * h).fill(-1);
+  let best = -1;
+  let bestSize = 0;
+  let cid = 0;
+  const q = [];
+  for (let s = 0; s < w * h; s++) {
+    if (comp[s] !== -1 || !opaque(s)) continue;
+    comp[s] = cid;
+    let size = 0;
+    q.length = 0;
+    q.push(s);
+    while (q.length) {
+      const p = q.pop();
+      size++;
+      const x = p % w;
+      if (x > 0 && comp[p - 1] === -1 && opaque(p - 1)) {
+        comp[p - 1] = cid;
+        q.push(p - 1);
+      }
+      if (x < w - 1 && comp[p + 1] === -1 && opaque(p + 1)) {
+        comp[p + 1] = cid;
+        q.push(p + 1);
+      }
+      if (p - w >= 0 && comp[p - w] === -1 && opaque(p - w)) {
+        comp[p - w] = cid;
+        q.push(p - w);
+      }
+      if (p + w < w * h && comp[p + w] === -1 && opaque(p + w)) {
+        comp[p + w] = cid;
+        q.push(p + w);
+      }
+    }
+    if (size > bestSize) {
+      bestSize = size;
+      best = cid;
+    }
+    cid++;
+  }
+  for (let p = 0; p < w * h; p++) {
+    if (comp[p] !== best) data[p * 4 + 3] = 0;
+  }
+
   const out = new PNG({ width: w, height: h });
   Buffer.from(data.buffer, data.byteOffset, data.length).copy(out.data);
   mkdirSync(join(OUT_ROOT, color), { recursive: true });
