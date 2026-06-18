@@ -39,6 +39,8 @@ pub struct Config {
     /// "Impede o notebook de desligar a tela" — keep-alive de sessão (scroll-zero)
     /// só em horário de trabalho e quando você está fora. Opt-in. Default off.
     pub keep_screen_awake: bool,
+    /// Cor do mascote: "green" ou "pink".
+    pub mascot_color: String,
 }
 
 impl Default for Config {
@@ -57,6 +59,7 @@ impl Default for Config {
             lunch_minutes: 60,
             target_work_hours: 8.0,
             keep_screen_awake: false,
+            mascot_color: "green".to_string(),
         }
     }
 }

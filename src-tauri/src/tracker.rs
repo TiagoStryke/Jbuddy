@@ -167,10 +167,12 @@ pub fn run_loop(
     let mut prev_working: Option<i64> = None;
     // Cota de almoço já consumida hoje (ausência dentro da janela).
     let mut lunch_used = Duration::ZERO;
+    // Último ícone do tray (cor, humor) — só troca quando muda.
+    let mut last_icon: Option<(String, String)> = None;
 
     loop {
         // Snapshot da config deste tick (a tela de configs altera ao vivo).
-        let (th, keep_awake, work_start, work_end, lunch_start, lunch_end, lunch_minutes, target_secs) =
+        let (th, keep_awake, work_start, work_end, lunch_start, lunch_end, lunch_minutes, target_secs, mascot_color) =
             match config.lock() {
                 Ok(c) => (
                     Thresholds {
@@ -184,8 +186,19 @@ pub fn run_loop(
                     c.lunch_end_hour,
                     c.lunch_minutes,
                     (c.target_work_hours * 3600.0) as i64,
+                    c.mascot_color.clone(),
                 ),
-                Err(_) => (Thresholds::default(), false, 9, 24, 12, 12, 60, 8 * 3600),
+                Err(_) => (
+                    Thresholds::default(),
+                    false,
+                    9,
+                    24,
+                    12,
+                    12,
+                    60,
+                    8 * 3600,
+                    "green".to_string(),
+                ),
             };
 
         let now_inst = Instant::now();
@@ -293,6 +306,17 @@ pub fn run_loop(
         let tray_title = fmt_short(working);
         let today_text = format!("{}: {}", t.today, fmt_short(working));
         let status_text = format!("{}: {}", t.status, locale::state_label(state.id()));
+        // Ícone do tray = mascote no humor atual; só troca quando muda.
+        let mood = crate::tray_mood(state.id());
+        let icon = if last_icon.as_ref().map(|(c, m)| (c.as_str(), m.as_str()))
+            != Some((mascot_color.as_str(), mood))
+        {
+            last_icon = Some((mascot_color.clone(), mood.to_string()));
+            Some(crate::mood_icon(&mascot_color, mood))
+        } else {
+            None
+        };
+
         let tray2 = tray.clone();
         let ti = today_item.clone();
         let si = status_item.clone();
@@ -300,6 +324,9 @@ pub fn run_loop(
             let _ = tray2.set_title(Some(tray_title));
             let _ = ti.set_text(today_text);
             let _ = si.set_text(status_text);
+            if let Some(ic) = icon {
+                let _ = tray2.set_icon(Some(ic));
+            }
         });
 
         // Lembretes (intervalo + anti-excesso + fim de expediente): no máximo

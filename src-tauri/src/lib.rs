@@ -124,6 +124,30 @@ pub(crate) fn place_reminder(win: &tauri::WebviewWindow) {
     }
 }
 
+/// Ícone do mascote pro tray, por cor + humor (happy/base/sleeping). Embutido
+/// em tempo de compilação (precisa que os PNGs existam ao buildar).
+pub(crate) fn mood_icon(color: &str, mood: &str) -> tauri::image::Image<'static> {
+    match (color, mood) {
+        ("pink", "happy") => tauri::include_image!("../src/assets/mascot/pink/tray/happy.png"),
+        ("pink", "sleeping") => {
+            tauri::include_image!("../src/assets/mascot/pink/tray/sleeping.png")
+        }
+        ("pink", _) => tauri::include_image!("../src/assets/mascot/pink/tray/base.png"),
+        (_, "happy") => tauri::include_image!("../src/assets/mascot/green/tray/happy.png"),
+        (_, "sleeping") => tauri::include_image!("../src/assets/mascot/green/tray/sleeping.png"),
+        _ => tauri::include_image!("../src/assets/mascot/green/tray/base.png"),
+    }
+}
+
+/// Humor do tray a partir do estado (working→happy, away→sleeping, resto→base).
+pub(crate) fn tray_mood(state_id: &str) -> &'static str {
+    match state_id {
+        "working" => "happy",
+        "away" => "sleeping",
+        _ => "base",
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let snapshot: SharedSnapshot = Arc::new(Mutex::new(Snapshot::default()));
@@ -190,9 +214,13 @@ pub fn run() {
                 ],
             )?;
 
-            // Ícone embutido em tempo de compilação — garante que o tray sempre
-            // tem imagem (não depende de default_window_icon vir Some).
-            let tray_icon = tauri::include_image!("icons/32x32.png");
+            // Ícone do mascote (cor salva, humor neutro). O tracker troca o humor.
+            let color0 = app
+                .state::<SharedConfig>()
+                .lock()
+                .map(|c| c.mascot_color.clone())
+                .unwrap_or_else(|_| "green".to_string());
+            let tray_icon = mood_icon(&color0, "base");
             // IMPORTANTE: guardar o handle. Se o `TrayIcon` for descartado, o macOS
             // remove o item do menu bar. Ele vai morar na thread de monitoramento.
             let tray = TrayIconBuilder::with_id("main")

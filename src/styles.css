@@ -128,10 +128,32 @@ body {
   justify-content: center;
   gap: 0.1rem;
 }
+.mascot {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: 0.1rem;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mascot {
+    animation: float 3.4s var(--ease) infinite;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 .ring-value {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 3.1rem;
+  font-size: 2.3rem;
   line-height: 1;
   letter-spacing: -0.01em;
 }

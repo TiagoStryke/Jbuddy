@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { applyStatic, lang, stateLabel, t } from "./i18n";
+import { moodForState } from "./mascot";
 
 interface Snapshot {
   state: string;
@@ -20,6 +21,7 @@ const GOAL_SECS = 6 * 3600;
 const RING_R = 86;
 const RING_C = 2 * Math.PI * RING_R;
 const LOCALE = lang === "pt" ? "pt-BR" : "en-US";
+let mascotColor = "green";
 
 function fmt(secs: number): string {
   const min = Math.floor(secs / 60);
@@ -52,6 +54,12 @@ async function refreshStats() {
 
     const pill = document.getElementById("state-pill");
     if (pill) pill.dataset.state = s.state || "";
+
+    const mascot = document.getElementById("mascot") as HTMLImageElement | null;
+    if (mascot) {
+      const next = moodForState(s.state, mascotColor);
+      if (mascot.src !== next) mascot.src = next;
+    }
 
     const tracked = s.working_secs + s.idle_secs + s.away_secs;
     setText(
@@ -136,8 +144,14 @@ async function refreshReports() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   applyStatic();
+  try {
+    const cfg = await invoke<{ mascot_color: string }>("get_config");
+    mascotColor = cfg.mascot_color || "green";
+  } catch (e) {
+    console.error("get_config falhou:", e);
+  }
   refreshStats();
   refreshReports();
   setInterval(refreshStats, 5000);

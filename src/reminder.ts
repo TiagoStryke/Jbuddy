@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { applyStatic, getReminder } from "./i18n";
+import { moodForReminder } from "./mascot";
 
 interface ReminderPayload {
   kind: string;
@@ -8,6 +9,7 @@ interface ReminderPayload {
 }
 
 let currentKind = "";
+let mascotColor = "green";
 
 function setText(id: string, value: string) {
   const el = document.getElementById(id);
@@ -22,9 +24,10 @@ listen<ReminderPayload>("show-reminder", (event) => {
   document.body.dataset.kind = kind;
 
   const c = getReminder(kind, rotation);
-  setText("emoji", c.emoji);
   setText("title", c.title);
   setText("message", c.message);
+  const mascot = document.getElementById("mascot") as HTMLImageElement | null;
+  if (mascot) mascot.src = moodForReminder(kind, mascotColor);
 
   const card = document.querySelector(".card");
   if (card) {
@@ -42,6 +45,9 @@ function act(action: string) {
 
 window.addEventListener("DOMContentLoaded", () => {
   applyStatic();
+  invoke<{ mascot_color: string }>("get_config")
+    .then((c) => (mascotColor = c.mascot_color || "green"))
+    .catch(() => {});
   document.getElementById("done")?.addEventListener("click", () => act("done"));
   document
     .getElementById("snooze")

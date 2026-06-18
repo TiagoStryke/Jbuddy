@@ -19,6 +19,7 @@ interface Config {
   lunch_minutes: number;
   target_work_hours: number;
   keep_screen_awake: boolean;
+  mascot_color: string;
 }
 
 function el(id: string): HTMLInputElement {
@@ -47,6 +48,7 @@ async function load() {
   el("lunch-mins").value = String(c.lunch_minutes);
   el("target").value = String(c.target_work_hours);
   el("keep-awake").checked = c.keep_screen_awake;
+  el("mascot-color").value = c.mascot_color || "green";
 }
 
 function collect(): Config {
@@ -68,6 +70,7 @@ function collect(): Config {
     lunch_minutes: clamp(parseInt(el("lunch-mins").value, 10), 0, 240),
     target_work_hours: clamp(parseFloat(el("target").value), 1, 16),
     keep_screen_awake: el("keep-awake").checked,
+    mascot_color: el("mascot-color").value,
   };
 }
 
