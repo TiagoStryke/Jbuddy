@@ -101,7 +101,7 @@ async function renderWeek() {
 }
 
 async function renderHours() {
-  const stats = await invoke<HourStat[]>("get_heatmap");
+  const stats = await invoke<HourStat[]>("get_today_hourly");
   const byHour = new Map(stats.map((s) => [s.hour, s.working_secs]));
   const vals = Array.from({ length: 24 }, (_, h) => byHour.get(h) ?? 0);
   const max = Math.max(1, ...vals);

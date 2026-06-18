@@ -39,6 +39,8 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "resizable": false,
+        "focus": false,
+        "acceptFirstMouse": true,
         "transparent": true,
         "windowEffects": {
           "effects": ["hudWindow"],

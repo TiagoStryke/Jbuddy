@@ -60,8 +60,8 @@ fn show_reminder(app: &AppHandle, kind: &str, rotation: usize) {
         let _ = app2.emit_to("reminder", "show-reminder", payload);
         if let Some(w) = app2.get_webview_window("reminder") {
             crate::place_reminder(&w);
+            // mostra SEM roubar o foco; o clique funciona via acceptFirstMouse.
             let _ = w.show();
-            let _ = w.set_focus();
         }
     });
 }
@@ -252,22 +252,22 @@ pub fn run_loop(
             seen_before_end = true;
         }
 
-        // Janela de almoço: enquanto você está AUSENTE dentro da janela, consome
-        // a cota de almoço — esse tempo é o almoço (fora do expediente), não conta
-        // como ausência. Passou da cota, o excedente volta a contar como ausente.
-        let in_lunch_window = lunch_start != lunch_end
+        let within_work_hours = (hour as u32) >= work_start && (hour as u32) < work_end;
+        let is_break = state != ActivityState::Working;
+
+        // Almoço: enquanto AUSENTE dentro da janela, consome a cota (é o almoço).
+        let consuming_lunch = lunch_start != lunch_end
             && (hour as u32) >= lunch_start
-            && (hour as u32) < lunch_end;
-        let lunch_allowance = Duration::from_secs(lunch_minutes * 60);
-        let skip_credit = if in_lunch_window
+            && (hour as u32) < lunch_end
             && state == ActivityState::Away
-            && lunch_used < lunch_allowance
-        {
+            && lunch_used < Duration::from_secs(lunch_minutes * 60);
+        if consuming_lunch {
             lunch_used += poll;
-            true
-        } else {
-            false
-        };
+        }
+
+        // NÃO credita: almoço, OU pausa (ocioso/ausente) FORA do expediente — a noite
+        // dormindo / fora do horário não vira "ausência". Foco (trabalho) conta sempre.
+        let skip_credit = consuming_lunch || (is_break && !within_work_hours);
 
         let (working, idle_t, away) = if let Some(store) = &store {
             if !skip_credit {
