@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use config::Config;
 use reminders::{ReminderKind, Schedule, SharedSchedule};
@@ -72,6 +72,7 @@ fn get_heatmap() -> Vec<store::HourStat> {
 /// config a cada tick, então já valem na hora.
 #[tauri::command]
 fn save_config(
+    app: AppHandle,
     config: State<'_, SharedConfig>,
     schedule: State<'_, SharedSchedule>,
     new_config: Config,
@@ -83,6 +84,8 @@ fn save_config(
             *s = Schedule::from_config(&c);
         }
     }
+    // avisa as janelas abertas pra reaplicarem tema/cor na hora.
+    let _ = app.emit("config-changed", ());
 }
 
 /// Ação do usuário num lembrete: "done" / "skip" (reagenda) ou "snooze" (adia curto).

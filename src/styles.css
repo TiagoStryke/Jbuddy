@@ -3,8 +3,16 @@
 body {
   /* leve tinta + brilho do acento por cima do material nativo */
   background:
-    radial-gradient(100% 70% at 50% -15%, rgba(48, 217, 119, 0.1), transparent 60%),
-    radial-gradient(90% 60% at 100% 115%, rgba(52, 200, 192, 0.07), transparent 55%);
+    radial-gradient(
+      100% 70% at 50% -15%,
+      color-mix(in srgb, var(--accent) 13%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 60% at 100% 115%,
+      color-mix(in srgb, var(--accent-2) 9%, transparent),
+      transparent 55%
+    );
 }
 
 body {
@@ -115,7 +123,7 @@ body {
   stroke: url(#grad);
   stroke-width: 14;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 8px rgba(48, 217, 119, 0.45));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 45%, transparent));
   transition: stroke-dashoffset 0.9s var(--ease);
 }
 

@@ -3,7 +3,7 @@
 body {
   background: radial-gradient(
     100% 60% at 50% -10%,
-    rgba(48, 217, 119, 0.1),
+    color-mix(in srgb, var(--accent) 13%, transparent),
     transparent 60%
   );
   overflow-y: auto;

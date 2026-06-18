@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { applyStatic, lang, stateLabel, t } from "./i18n";
 import { moodForState } from "./mascot";
 
@@ -144,16 +145,26 @@ async function refreshReports() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", async () => {
-  applyStatic();
+async function applyConfig() {
   try {
-    const cfg = await invoke<{ mascot_color: string }>("get_config");
+    const cfg = await invoke<{ mascot_color: string; theme: string }>("get_config");
     mascotColor = cfg.mascot_color || "green";
+    document.documentElement.dataset.theme = cfg.theme || "default";
   } catch (e) {
     console.error("get_config falhou:", e);
   }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  applyStatic();
+  await applyConfig();
   refreshStats();
   refreshReports();
   setInterval(refreshStats, 5000);
   setInterval(refreshReports, 60000);
+  // reaplica tema/cor quando as configurações mudam (sem reabrir).
+  listen("config-changed", async () => {
+    await applyConfig();
+    refreshStats();
+  });
 });

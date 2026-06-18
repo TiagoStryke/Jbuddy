@@ -41,6 +41,8 @@ pub struct Config {
     pub keep_screen_awake: bool,
     /// Cor do mascote: "green" ou "pink".
     pub mascot_color: String,
+    /// Tema visual do app: "default" | "dark" | "rose" | "frost" | "amber".
+    pub theme: String,
 }
 
 impl Default for Config {
@@ -60,6 +62,7 @@ impl Default for Config {
             target_work_hours: 8.0,
             keep_screen_awake: false,
             mascot_color: "green".to_string(),
+            theme: "default".to_string(),
         }
     }
 }

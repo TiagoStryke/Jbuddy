@@ -20,6 +20,7 @@ interface Config {
   target_work_hours: number;
   keep_screen_awake: boolean;
   mascot_color: string;
+  theme: string;
 }
 
 function el(id: string): HTMLInputElement {
@@ -49,6 +50,8 @@ async function load() {
   el("target").value = String(c.target_work_hours);
   el("keep-awake").checked = c.keep_screen_awake;
   el("mascot-color").value = c.mascot_color || "green";
+  el("theme").value = c.theme || "default";
+  document.documentElement.dataset.theme = c.theme || "default";
 }
 
 function collect(): Config {
@@ -71,6 +74,7 @@ function collect(): Config {
     target_work_hours: clamp(parseFloat(el("target").value), 1, 16),
     keep_screen_awake: el("keep-awake").checked,
     mascot_color: el("mascot-color").value,
+    theme: el("theme").value,
   };
 }
 
@@ -91,4 +95,8 @@ window.addEventListener("DOMContentLoaded", () => {
   applyStatic();
   load();
   document.getElementById("save")?.addEventListener("click", save);
+  // preview ao vivo do tema enquanto escolhe (antes de salvar)
+  document.getElementById("theme")?.addEventListener("change", () => {
+    document.documentElement.dataset.theme = el("theme").value;
+  });
 });

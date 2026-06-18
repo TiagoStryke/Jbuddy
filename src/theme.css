@@ -76,6 +76,27 @@ body {
   z-index: 50;
 }
 
+/* ── Temas: trocam o acento (e o glow derivado dele). Os estados
+   (trabalhando/ocioso/ausente) seguem semânticos em todos. ─────────────── */
+html[data-theme="dark"] {
+  --accent: #aeb6c4;
+  --accent-2: #828b9c;
+}
+html[data-theme="rose"] {
+  --accent: #ff5d8f;
+  --accent-2: #ff9ec2;
+}
+html[data-theme="frost"] {
+  --accent: #a6c4dd;
+  --accent-2: #7fa8cc;
+  --glass: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.16);
+}
+html[data-theme="amber"] {
+  --accent: #f5a623;
+  --accent-2: #ffcf6b;
+}
+
 /* cartão de vidro reutilizável */
 .glass {
   background: var(--glass);

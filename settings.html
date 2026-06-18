@@ -89,9 +89,19 @@
       </section>
 
       <section class="group glass">
-        <h2 data-i18n="settings.mascot">Mascot</h2>
+        <h2 data-i18n="settings.appearance">Appearance</h2>
         <div class="row">
-          <span class="label" data-i18n="settings.color">color</span>
+          <span class="label" data-i18n="settings.theme">theme</span>
+          <select class="num select" id="theme">
+            <option value="default" data-i18n="theme.default">default</option>
+            <option value="dark" data-i18n="theme.dark">dark</option>
+            <option value="rose" data-i18n="theme.rose">rose</option>
+            <option value="frost" data-i18n="theme.frost">frost</option>
+            <option value="amber" data-i18n="theme.amber">amber</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="label" data-i18n="settings.mascotColor">mascot color</span>
           <select class="num select" id="mascot-color">
             <option value="green" data-i18n="settings.green">green</option>
             <option value="pink" data-i18n="settings.pink">pink</option>

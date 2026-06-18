@@ -45,9 +45,15 @@ function act(action: string) {
 
 window.addEventListener("DOMContentLoaded", () => {
   applyStatic();
-  invoke<{ mascot_color: string }>("get_config")
-    .then((c) => (mascotColor = c.mascot_color || "green"))
-    .catch(() => {});
+  const applyCfg = () =>
+    invoke<{ mascot_color: string; theme: string }>("get_config")
+      .then((c) => {
+        mascotColor = c.mascot_color || "green";
+        document.documentElement.dataset.theme = c.theme || "default";
+      })
+      .catch(() => {});
+  applyCfg();
+  listen("config-changed", applyCfg);
   document.getElementById("done")?.addEventListener("click", () => act("done"));
   document
     .getElementById("snooze")
