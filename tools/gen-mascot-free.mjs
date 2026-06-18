@@ -31,6 +31,7 @@ const MOODS = {
   sleeping: "sleeping peacefully, eyes closed as gentle curves, a small 'z' floating above its head",
   water: "happily holding a tiny glass of water with both stubby arms, taking a sip",
   stretch: "doing a cheerful morning stretch, both short arms raised high above its head, stretching upward, happy face",
+  typing: "holding and typing on a small bright cyan-blue laptop in front of its belly, both stubby arms tapping the glowing keyboard, focused busy happy expression, the laptop touching its body",
 };
 
 async function gen(name, mood) {

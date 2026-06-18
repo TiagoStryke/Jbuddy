@@ -10,7 +10,7 @@ import { PNG } from "pngjs";
 
 const ROOT = join(process.cwd(), "src/assets/mascot");
 const COLORS = ["green", "pink"];
-const MOODS = ["base", "happy", "sleeping"]; // os que o tray usa
+const MOODS = ["base", "happy", "sleeping", "typing"]; // os que o tray usa
 
 function cropSquare(color, mood) {
   const src = join(ROOT, color, `${mood}.png`);

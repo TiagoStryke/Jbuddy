@@ -16,7 +16,12 @@ function url(color: string, name: string): string {
 }
 
 /** Humor do mascote no dashboard a partir do estado de atividade. */
-export function moodForState(state: string, color = "green"): string {
+export function moodForState(
+  state: string,
+  color = "green",
+  typing = false,
+): string {
+  if (typing) return url(color, "typing");
   if (state === "working") return url(color, "happy");
   if (state === "away") return url(color, "sleeping");
   return url(color, "base"); // ocioso / desconhecido

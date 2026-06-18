@@ -135,9 +135,11 @@ pub(crate) fn mood_icon(color: &str, mood: &str) -> tauri::image::Image<'static>
         ("pink", "sleeping") => {
             tauri::include_image!("../src/assets/mascot/pink/tray/sleeping.png")
         }
+        ("pink", "typing") => tauri::include_image!("../src/assets/mascot/pink/tray/typing.png"),
         ("pink", _) => tauri::include_image!("../src/assets/mascot/pink/tray/base.png"),
         (_, "happy") => tauri::include_image!("../src/assets/mascot/green/tray/happy.png"),
         (_, "sleeping") => tauri::include_image!("../src/assets/mascot/green/tray/sleeping.png"),
+        (_, "typing") => tauri::include_image!("../src/assets/mascot/green/tray/typing.png"),
         _ => tauri::include_image!("../src/assets/mascot/green/tray/base.png"),
     }
 }

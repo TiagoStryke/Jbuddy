@@ -32,6 +32,9 @@ const KEEP_ALIVE_SECS: u64 = 150;
 /// Tempo contínuo trabalhando sem pausa que dispara o aviso anti-excesso.
 const NO_BREAK_SECS: u64 = 90 * 60;
 
+/// Última tecla há menos que isso (e trabalhando) ⇒ "digitando".
+const TYPING_SECS: f64 = 4.0;
+
 /// Dia útil e dentro do horário de trabalho configurado.
 fn is_work_hours(start: u32, end: u32) -> bool {
     let now = Local::now();
@@ -122,6 +125,7 @@ pub struct Snapshot {
     pub working_secs: i64,
     pub idle_secs: i64,
     pub away_secs: i64,
+    pub typing: bool,
 }
 
 pub type SharedSnapshot = Arc<Mutex<Snapshot>>;
@@ -227,6 +231,9 @@ pub fn run_loop(
         } else {
             classify(real_idle, &th)
         };
+        // Digitando = trabalhando + tecla há pouquíssimo tempo.
+        let typing = state == ActivityState::Working
+            && idle::seconds_since_last_key() < TYPING_SECS;
 
         // Keep-alive opt-in: só em horário de trabalho, tela acesa, e quando você
         // está fora (idle real alto). No máximo um nudge a cada KEEP_ALIVE_SECS.
@@ -298,6 +305,7 @@ pub fn run_loop(
             s.working_secs = working;
             s.idle_secs = idle_t;
             s.away_secs = away;
+            s.typing = typing;
         }
 
         // Atualiza a UI (tray) sempre na main thread.
@@ -307,7 +315,11 @@ pub fn run_loop(
         let today_text = format!("{}: {}", t.today, fmt_short(working));
         let status_text = format!("{}: {}", t.status, locale::state_label(state.id()));
         // Ícone do tray = mascote no humor atual; só troca quando muda.
-        let mood = crate::tray_mood(state.id());
+        let mood = if typing {
+            "typing"
+        } else {
+            crate::tray_mood(state.id())
+        };
         let icon = if last_icon.as_ref().map(|(c, m)| (c.as_str(), m.as_str()))
             != Some((mascot_color.as_str(), mood))
         {

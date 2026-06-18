@@ -13,6 +13,8 @@ use std::os::raw::c_double;
 const HID_SYSTEM_STATE: u32 = 1;
 /// `kCGAnyInputEventType` — qualquer tipo de evento de input (definido como `~0`).
 const ANY_INPUT_EVENT_TYPE: u32 = 0xFFFF_FFFF;
+/// `kCGEventKeyDown` — tecla pressionada (pra detectar digitação).
+const KEY_DOWN_EVENT_TYPE: u32 = 10;
 
 #[link(name = "ApplicationServices", kind = "framework")]
 extern "C" {
@@ -25,6 +27,12 @@ extern "C" {
 pub fn seconds_since_last_input() -> f64 {
     // SAFETY: chamada FFI a uma função read-only do CoreGraphics; sem ponteiros.
     unsafe { CGEventSourceSecondsSinceLastEventType(HID_SYSTEM_STATE, ANY_INPUT_EVENT_TYPE) }
+}
+
+/// Segundos desde a última tecla pressionada (pra detectar digitação ativa).
+pub fn seconds_since_last_key() -> f64 {
+    // SAFETY: chamada FFI read-only do CoreGraphics.
+    unsafe { CGEventSourceSecondsSinceLastEventType(HID_SYSTEM_STATE, KEY_DOWN_EVENT_TYPE) }
 }
 
 /// `true` se a tela principal está dormindo (tampa fechada / display apagado).

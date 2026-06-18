@@ -8,6 +8,7 @@ interface Snapshot {
   working_secs: number;
   idle_secs: number;
   away_secs: number;
+  typing: boolean;
 }
 interface HourStat {
   hour: number;
@@ -58,7 +59,7 @@ async function refreshStats() {
 
     const mascot = document.getElementById("mascot") as HTMLImageElement | null;
     if (mascot) {
-      const next = moodForState(s.state, mascotColor);
+      const next = moodForState(s.state, mascotColor, s.typing);
       if (mascot.src !== next) mascot.src = next;
     }
 
