@@ -30,6 +30,15 @@ fn get_today_stats(snap: State<'_, SharedSnapshot>) -> Snapshot {
 }
 
 type SharedConfig = Arc<Mutex<Config>>;
+/// Lembrete pendente — pra janela buscar ao carregar (caso perca o evento push
+/// no primeiro show, antes do webview registrar o listener).
+pub(crate) type PendingReminder = Arc<Mutex<Option<reminders::ReminderPayload>>>;
+
+/// Lembrete a exibir agora (a janela busca ao carregar).
+#[tauri::command]
+fn get_pending_reminder(pending: State<'_, PendingReminder>) -> Option<reminders::ReminderPayload> {
+    pending.lock().ok().and_then(|p| p.clone())
+}
 
 /// Config atual (pra tela de configurações ler).
 #[tauri::command]
@@ -95,6 +104,7 @@ fn reminder_action(
     app: AppHandle,
     schedule: State<'_, SharedSchedule>,
     active: State<'_, Arc<AtomicBool>>,
+    pending: State<'_, PendingReminder>,
     kind: String,
     action: String,
 ) {
@@ -108,6 +118,9 @@ fn reminder_action(
     }
     if let Some(win) = app.get_webview_window("reminder") {
         let _ = win.hide();
+    }
+    if let Ok(mut p) = pending.lock() {
+        *p = None;
     }
     active.store(false, Ordering::Relaxed);
 }
@@ -163,6 +176,7 @@ pub fn run() {
     };
     // true enquanto uma janela de lembrete está aberta (evita empilhar).
     let reminder_active = Arc::new(AtomicBool::new(false));
+    let pending_reminder: PendingReminder = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -170,6 +184,7 @@ pub fn run() {
         .manage(config.clone())
         .manage(schedule.clone())
         .manage(reminder_active.clone())
+        .manage(pending_reminder.clone())
         .invoke_handler(tauri::generate_handler![
             get_today_stats,
             get_config,
@@ -177,7 +192,8 @@ pub fn run() {
             reminder_action,
             get_today_hourly,
             get_week,
-            get_heatmap
+            get_heatmap,
+            get_pending_reminder
         ])
         .setup(move |app| {
             // App de bandeja puro: sem ícone na Dock (macOS).

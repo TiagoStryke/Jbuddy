@@ -57,6 +57,15 @@ fn is_after_work_end(end: u32) -> bool {
 
 /// Mostra um lembrete (qualquer tipo) na janela do canto.
 fn show_reminder(app: &AppHandle, kind: &str, rotation: usize) {
+    // guarda o pendente pra janela buscar ao carregar (caso perca o evento).
+    if let Some(p) = app.try_state::<crate::PendingReminder>() {
+        if let Ok(mut g) = p.lock() {
+            *g = Some(crate::reminders::ReminderPayload {
+                kind: kind.to_string(),
+                rotation,
+            });
+        }
+    }
     let payload = serde_json::json!({ "kind": kind, "rotation": rotation });
     let app2 = app.clone();
     let _ = app.run_on_main_thread(move || {
