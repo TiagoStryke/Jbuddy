@@ -27,7 +27,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0 22px 0 64px; /* esquerda livre pros traffic lights */
+  padding: 0 22px 0 86px; /* esquerda livre pros traffic lights (com folga) */
   background: rgba(22, 22, 26, 0.72);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
