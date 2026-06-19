@@ -13,14 +13,25 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 34px 22px 24px;
+  padding: 64px 22px 24px; /* topo livre pra topbar fixa */
 }
 
-.head {
+/* barra de título fixa: conteúdo rola por baixo; traffic lights ficam nela */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  height: 52px;
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding-left: 64px; /* traffic lights */
+  padding: 0 22px 0 64px; /* esquerda livre pros traffic lights */
+  background: rgba(22, 22, 26, 0.72);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid var(--glass-border);
 }
 .logo {
   display: grid;
